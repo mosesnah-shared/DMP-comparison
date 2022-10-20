@@ -1,0 +1,7 @@
+results
+.DS_store
+__pycache__
+.venv
+tmp
+.vscode
+DMP_references
