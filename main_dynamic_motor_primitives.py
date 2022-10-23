@@ -2,11 +2,9 @@
 
 # ============================================================================= #
 | Project:        [M3X Whip Project]
-| Title:          mujoco-py scripts for running a whip-targeting simuation
+| Title:          Dynamic Motor Primitives, the most basic script
 | Author:         Moses C. Nah
 | Email:          [Moses] mosesnah@mit.edu
-| Creation Date:  Dec 8th,  2020
-| Final Update:   Jun 20th, 2022
 # ============================================================================= #
 
 """
