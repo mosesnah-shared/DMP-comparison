@@ -51,6 +51,7 @@
             <geom name='geom3' type='sphere' pos='0 0 0' material='JointColor' size='0.08' mass='0'/>        
 				    <geom type='cylinder' fromto='0 0 0 1 0 0'   material='LimbColor'  size='0.04' mass='0'/>
             <geom name='geom4' type='sphere' pos='1 0 0' material='JointColor' size='0.08' mass='0'/>                    
+            <site name="site_end_effector" pos='1 0 0'/>
           </body>
       </body>
   </body>

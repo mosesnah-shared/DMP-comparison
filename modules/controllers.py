@@ -40,12 +40,12 @@ class Controller:
             Initialize an empty list of conroller parameters
         """
 
-        assert self.names_data      is not None
-        assert self.names_ctrl_pars is not None 
-        
         # Generate an empty arrays with data and controller parameters 
-        [ setattr( self, name + "_arr", [ ] ) for name in self.names_data       ]
-        [ setattr( self,          name, [ ] ) for name in self.names_ctrl_pars  ]
+        if self.names_data is not None:
+            [ setattr( self, name + "_arr", [ ] ) for name in self.names_data  ]
+
+        if self.names_ctrl_pars is not None:
+            [ setattr( self,          name, [ ] ) for name in self.names_ctrl_pars  ]
 
     def save_data( self ):
         """
@@ -143,7 +143,7 @@ class JointImpedanceController( ImpedanceController ):
 
         self.n_movs += 1
 
-    def input_calc( self, t, is_gravity_comp = True, is_noise = False ):
+    def input_calc( self, t ):
         """
             Descriptions
             ------------
@@ -196,16 +196,160 @@ class JointImpedanceController( ImpedanceController ):
 
 class CartesianImpedanceController( ImpedanceController ):
 
-    def __init__( self, mj_sim, mj_args ):
-        raise NotImplementedError( )
+    def __init__( self, mj_sim, mj_args, name ):
+        super( ).__init__( mj_sim, mj_args, name )
 
-    def input_calc( self, t:float ):
-        raise NotImplementedError( )
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "Kx", "Bx", "x0i", "x0f", "D", "ti" )
+
+        # The name of variables that will be saved 
+        self.names_data = ( "t", "tau", "q", "dq",  "x0", "dx0" )
+
+        # Generate an empty lists names of parameters
+        self.init( )
+
+        # The number of submovements
+        self.n_movs = 0 
+
+    def set_impedance( self, Kx: np.ndarray, Bx:np.ndarray ):
+
+        # Regardless of planar/spatial robot, DOF = 3
+        assert len( Kx      ) == 3 and len( Bx      ) == 3
+        assert len( Kx[ 0 ] ) == 3 and len( Bx[ 0 ] ) == 3
+
+        self.Kx = Kx
+        self.Bx = Bx 
+
+    def add_mov_pars( self, x0i : np.ndarray, x0f: np.ndarray, D:float, ti: float ):
+
+        # Make sure the given input is 3 dimension
+        # For Planar robot, all we need is 2, but for generalization.
+        assert len( x0i ) == 3 and len( x0f ) == 3
+        assert D > 0 and ti >= 0
+
+        # If done, append the mov_parameters
+        self.x0i.append( x0i )
+        self.x0f.append( x0f )
+        self.D.append(     D )
+        self.ti.append(   ti )
+
+        self.n_movs += 1
+
+    def input_calc( self, t ):
+        """
+            Descriptions
+            ------------
+                We implement the controller. 
+                The controller generates torque with the following equation 
+
+                tau = J^T( Kx( x0 - L(q) ) + Bx( dx0 - Jdq )  )
+
+                L(q) is the forward kinematics map of the end-effector
+
+            Arguments
+            ---------
+                t: The current time of the simulation. 
+        """
+        assert self.Kx is not None and self.Bx is not None
+        assert self.n_movs >= 1 
+
+        # Save the current time 
+        self.t = t 
+
+        # Get the current angular position and velocity of the robot arm only
+        self.q  = np.copy( self.mj_data.qpos[ : self.n_act ] )
+        self.dq = np.copy( self.mj_data.qvel[ : self.n_act ] )
+
+        # Get the end-effector position of the robot
+        # the name of the site is "site_end_effector"
+
+        # Get the Jacobian of the end-effector
+        # The Jacobian is 3-by-nq, although we only need the first two components
+        J    = self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 )
+        xEE  = self.mj_data.get_site_xpos(  "site_end_effector" )
+        dxEE = self.mj_data.get_site_xvelp( "site_end_effector" )
+ 
+        # The zero-force traejctory (3D)
+        self.x0  = np.zeros( 3 )
+        self.dx0 = np.zeros( 3 )
+
+        for i in range( self.n_movs ):
+            for j in range( 3 ):
+                tmp_x0, tmp_dx0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+
+                self.x0[ j ]  += tmp_x0 
+                self.dx0[ j ] += tmp_dx0
+
+        self.tau  = J.T @ ( self.Kx @ ( self.x0 - xEE ) + self.Bx @ (self.dx0 - dxEE ) )
+
+        #     (1) index array       (3) The tau value
+        return  np.arange( self.n_act ), self.tau
 
     def reset( self ):
-        raise NotImplementedError( )
+        """
+            Initialize all ctrl variables  
+        """
+
+        self.init( )
+        self.n_movs = 0 
+
+# Cartesian Impedance Controller for Obstacle avoidance
+# This is separately needed
+class CartesianImpedanceControllerObstacle( ImpedanceController ):
+
+    def __init__( self, mj_sim, mj_args, name, obs_pos ):
+
+        super( ).__init__( mj_sim, mj_args, name )
+
+        # The position of the obstacle
+        # [TODO] [2022.10.22] [Moses C. Nah]
+        # We can make this as a "moving obstacle"
+        self.obs_pos = obs_pos
+
+        # Generate an empty lists names of parameters
+        self.init( )
+
+    def input_calc( self, t ):
+        """
+            Descriptions
+            ------------
+                We Modified the Cartesian Controller
+
+            Arguments
+            ---------
+                t: The current time of the simulation. 
+        """
+
+        # Save the current time 
+        self.t = t 
+
+        # Get the current robot end-effector's Jacobian, position and velocity
+        J    = self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 )
+        xEE  = self.mj_data.get_site_xpos(  "site_end_effector" )
+        
+        # The displacement between the current position and obstacle 
+        delta_x = self.obs_pos - xEE
+
+        # Getting the radial displacement 
+        r2 = np.linalg.norm( delta_x , ord = 2 )
+
+        # The magnitude and direction of the repulsive force 
+        F = - ( ( 0.3 / r2 ) ) ** 5 * delta_x / r2
+
+        self.tau  = J.T @ F
 
 
+        #     (1) index array       (3) The tau value
+                # FILL IN
+        return  np.arange( self.n_act ), self.tau
+
+    def reset( self ):
+        """
+            Initialize all ctrl variables  
+        """
+
+        self.init( )
+        self.n_movs = 0 
 
 # Dynamic Movement Primitives
 class DMP:
