@@ -111,8 +111,12 @@ class Simulation:
         self.init_qvel = qvel
 
         # If the array is shorter than the actual self.nq in the model, just fill it with zero 
-        self.mj_data.qpos[ : ] = qpos[ : nq ] if len( qpos ) >= nq else np.concatenate( ( qpos, np.zeros( nq - len( qpos ) ) ) , axis = None )
-        self.mj_data.qvel[ : ] = qvel[ : nq ] if len( qvel ) >= nq else np.concatenate( ( qvel, np.zeros( nq - len( qvel ) ) ) , axis = None )
+        if self.n_act != 1:
+            self.mj_data.qpos[ : ] = qpos[ : nq ] if len( qpos ) >= nq else np.concatenate( ( qpos, np.zeros( nq - len( qpos ) ) ) , axis = None )
+            self.mj_data.qvel[ : ] = qvel[ : nq ] if len( qvel ) >= nq else np.concatenate( ( qvel, np.zeros( nq - len( qvel ) ) ) , axis = None )
+        else:
+            self.mj_data.qpos[ 0 ] = qpos
+            self.mj_data.qvel[ 0 ] = qvel
 
         # Forward the simulation to update the posture 
         self.mj_sim.forward( )

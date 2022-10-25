@@ -124,7 +124,8 @@ class JointImpedanceController( ImpedanceController ):
 
         # Make sure the given input is (self.n_act x self.n_act )
         assert len( Kq      ) == self.n_act and len( Bq      ) == self.n_act 
-        assert len( Kq[ 0 ] ) == self.n_act and len( Bq[ 0 ] ) == self.n_act 
+
+        if self.n_act != 1: assert len( Kq[ 0 ] ) == self.n_act and len( Bq[ 0 ] ) == self.n_act 
 
         self.Kq = Kq
         self.Bq = Bq 
@@ -172,12 +173,14 @@ class JointImpedanceController( ImpedanceController ):
         self.q0  = np.zeros( self.n_act )
         self.dq0 = np.zeros( self.n_act )
 
+    
         for i in range( self.n_movs ):
             for j in range( self.n_act ):
                 tmp_q0, tmp_dq0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
 
                 self.q0[ j ]  += tmp_q0 
                 self.dq0[ j ] += tmp_dq0
+
 
         tau_imp   = self.Kq @ ( self.q0 - self.q ) + self.Bq @ ( self.dq0 - self.dq )
         self.tau  = tau_imp
@@ -203,7 +206,7 @@ class CartesianImpedanceController( ImpedanceController ):
         self.names_ctrl_pars = ( "Kx", "Bx", "x0i", "x0f", "D", "ti" )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "dq",  "x0", "dx0" )
+        self.names_data = ( "t", "tau", "q", "dq", "J", "x0", "dx0", "xEE", "dxEE" )
 
         # Generate an empty lists names of parameters
         self.init( )
@@ -260,14 +263,13 @@ class CartesianImpedanceController( ImpedanceController ):
         self.q  = np.copy( self.mj_data.qpos[ : self.n_act ] )
         self.dq = np.copy( self.mj_data.qvel[ : self.n_act ] )
 
-        # Get the end-effector position of the robot
-        # the name of the site is "site_end_effector"
-
         # Get the Jacobian of the end-effector
         # The Jacobian is 3-by-nq, although we only need the first two components
-        J    = self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 )
-        xEE  = self.mj_data.get_site_xpos(  "site_end_effector" )
-        dxEE = self.mj_data.get_site_xvelp( "site_end_effector" )
+        self.J    = np.copy( self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
+
+        # Get the end-effector trajectories
+        self.xEE  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dxEE = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
  
         # The zero-force traejctory (3D)
         self.x0  = np.zeros( 3 )
@@ -280,7 +282,9 @@ class CartesianImpedanceController( ImpedanceController ):
                 self.x0[ j ]  += tmp_x0 
                 self.dx0[ j ] += tmp_dx0
 
-        self.tau  = J.T @ ( self.Kx @ ( self.x0 - xEE ) + self.Bx @ (self.dx0 - dxEE ) )
+        self.tau  = self.J.T @ ( self.Kx @ ( self.x0 - self.xEE ) + self.Bx @ (self.dx0 - self.dxEE ) )
+
+        if self.mj_args.is_save_data: self.save_data( )
 
         #     (1) index array       (3) The tau value
         return  np.arange( self.n_act ), self.tau
@@ -301,13 +305,31 @@ class CartesianImpedanceControllerObstacle( ImpedanceController ):
 
         super( ).__init__( mj_sim, mj_args, name )
 
-        # The position of the obstacle
-        # [TODO] [2022.10.22] [Moses C. Nah]
-        # We can make this as a "moving obstacle"
-        self.obs_pos = obs_pos
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "k", "n", "obs_pos" )
+
+        # The name of the controller parameters 
+        self.names_data = ( "t", "F" )        
 
         # Generate an empty lists names of parameters
         self.init( )
+
+        # The position of the obstacle
+        # [TODO] [2022.10.22] [Moses C. Nah]
+        # We can make this as a "moving obstacle"
+        self.obs_pos = obs_pos        
+
+    def set_impedance( self, k ):
+
+        assert k >= 0 
+
+        self.k = k
+
+    def set_order( self, n : int ):
+
+        assert n >= 1
+
+        self.n = n        
 
     def input_calc( self, t ):
         """
@@ -320,24 +342,25 @@ class CartesianImpedanceControllerObstacle( ImpedanceController ):
                 t: The current time of the simulation. 
         """
 
+        assert self.k is not None
+
         # Save the current time 
         self.t = t 
 
         # Get the current robot end-effector's Jacobian, position and velocity
         J    = self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 )
         xEE  = self.mj_data.get_site_xpos(  "site_end_effector" )
-        
+
         # The displacement between the current position and obstacle 
         delta_x = self.obs_pos - xEE
 
         # Getting the radial displacement 
-        r2 = np.linalg.norm( delta_x , ord = 2 )
+        r2 = np.linalg.norm( delta_x , ord = 2 ) 
 
         # The magnitude and direction of the repulsive force 
-        F = - ( ( 0.3 / r2 ) ) ** 5 * delta_x / r2
+        self.F = - self.k * ( ( 1 / r2 ) ** self.n )  * delta_x 
 
-        self.tau  = J.T @ F
-
+        self.tau  = J.T @ self.F
 
         #     (1) index array       (3) The tau value
                 # FILL IN

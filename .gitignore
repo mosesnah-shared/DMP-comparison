@@ -5,3 +5,5 @@ __pycache__
 tmp
 .vscode
 DMP_references
+*.asv
+*.pdf

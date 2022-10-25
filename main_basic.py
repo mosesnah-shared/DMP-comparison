@@ -21,6 +21,7 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 from simulation   import Simulation
 from controllers  import JointImpedanceController
 from constants    import my_parser
+from constants    import Constants  as C
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -29,26 +30,20 @@ np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )
 parser = my_parser( )
 args, unknown = parser.parse_known_args( )
 
+
 def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
-    ctrl.set_impedance( Kq = 10 * np.eye( ctrl.n_act ), Bq = 5 *np.eye( ctrl.n_act ) )
-    n = my_sim.n_act
+    ctrl.set_impedance( Kq = np.array( [10] ), Bq = np.array( [ 5 ] ) )
 
-    mov_arrs1  = np.array(  [ -0.5, -0.5,  0.1,  0.1, 0.6  ] )     
-    mov_arrs2  = np.array(  [    0,    0, -0.6, -0.6, 0.7  ] )     
-
-    ctrl.add_mov_pars( q0i = mov_arrs1[ :n ], q0f = mov_arrs1[ n:2*n ], D = mov_arrs1[ -1 ], ti = args.start_time  )    
-    ctrl.add_mov_pars( q0i = mov_arrs2[ :n ], q0f = mov_arrs2[ n:2*n ], D = mov_arrs2[ -1 ], ti = 0.4  )    
-
-    # Add rhythmic movements too
+    ctrl.add_mov_pars( q0i = np.array( [ 0 ] ) , q0f = np.array( [ 1 ] ), D = 1, ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
 
-    init_cond = { "qpos": mov_arrs1[ :n ] ,  "qvel": np.zeros( n ) }
+    init_cond = { "qpos": np.array( [ 0 ] ) ,  "qvel": np.array( [ 0 ] ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Run the simulation
@@ -58,20 +53,23 @@ def run_motor_primitives( my_sim ):
 
     my_sim.close( )
 
-def run_movement_primitives( my_sim ):
+
+def run_movement_primitives( my_sim ):    
     NotImplementedError( )
+
 
 if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    my_sim = Simulation( args )
 
-    args.model_name = "2DOF_planar_torque"
+    args.model_name = "1DOF_planar_torque"
     my_sim = Simulation( args )
 
     idx = 1
 
     if idx == 1: run_motor_primitives( my_sim )
     else: run_movement_primitives( my_sim )
+
+    
 

@@ -37,20 +37,22 @@ if __name__ == "__main__":
     # Add the movements of the Cartesian Impedance Controller 
     # Set the initial posture 
     n = my_sim.n_act
-    init_cond = { "qpos": np.array( [ np.pi/4, np.pi/2 ] ) ,  "qvel": np.zeros( n ) }
+    q1 = np.pi * 1/12
+    init_cond = { "qpos": np.array( [ q1, np.pi-2*q1- 0.02] ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
-    # The end-effector position for the initial position
-    xEEi = my_sim.mj_data.get_site_xpos(  "site_end_effector" )
+    xEEi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
 
     # The end-effector position for the final position
-    xEEf = xEEi + np.array( [ 0.0, -1.0, 0.0 ] )
+    xEEf = xEEi + np.array( [ 0.0, 1.0, 0.0 ] )
 
     # Define a Task-space controller 1
     ctrl  = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
     # Define an impedance controller for obstacle avoidance
-    ctrl2 = CartesianImpedanceControllerObstacle( my_sim, args, name = "task_imp2", obs_pos = np.array( [ 0, 1.0, 0 ] ) )
+    ctrl2 = CartesianImpedanceControllerObstacle( my_sim, args, name = "task_imp2", obs_pos = np.array( [ 0, 0.5 * (xEEi[ 1 ] + xEEf[ 1 ]), 0  ])   )
+    ctrl2.set_impedance( k = args.k )
+    ctrl2.set_order( n = args.order )
 
     ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 8, ti = args.start_time  )    
     ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 30 * np.eye( 3 ) )
