@@ -1,6 +1,6 @@
 <!-- =========================================================================== #
-# Project:        Planar 2DOF Robot
-# Title:          A Planar 2DOF robot with torque actuators
+# Project:        Planar 1DOF Robot
+# Title:          A Planar 1DOF robot with torque actuators
 # Author:         Moses C. Nah
 # Creation Date:  Wednesday, Oct 19th, 2022
 # ============================================================================= #  -->
@@ -39,14 +39,8 @@
 			<inertial pos='0.5 0 0' mass='1' diaginertia='1 1 1'/>
 			<geom name='geom1' type='sphere' pos='0 0 0' material='JointColor' size='0.08' mass='0'/>
 			<geom type='cylinder' fromto='0 0 0 1 0 0'   material='LimbColor'  size='0.04' mass='0'/>
-			<body name='body2' pos='1 0 0' euler='0 0 0'>
-        <joint name='joint2' ref='0' type='hinge' stiffness='0' pos='0 0 0' axis='0 0 1'/>
-        <inertial pos='0.5 0 0' mass='1' diaginertia='1 1 1'/>        
-	  		<geom name='geom2' type='sphere' pos='0 0 0' material='JointColor' size='0.08' mass='0'/>
-  			<geom type='cylinder' fromto='0 0 0 1 0 0'   material='LimbColor'  size='0.04' mass='0'/>
-        <geom name='geom3' type='sphere' pos='1 0 0' material='JointColor' size='0.08' mass='0'/>        
-        <site name="site_end_effector" pos='1 0 0'/>
-      </body>
+      <geom name='geom2' type='sphere' pos='1 0 0' material='JointColor' size='0.08' mass='0'/>        
+      <site name="site_end_effector" pos='1 0 0'/>
   </body>
 
 
@@ -54,7 +48,6 @@
 
   <actuator>
 		  <motor joint='joint1' name='motor_joint1' forcelimited='false'/>
-		  <motor joint='joint2' name='motor_joint2' forcelimited='false'/>
   </actuator>
 
 </mujoco>

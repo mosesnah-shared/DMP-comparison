@@ -6,6 +6,10 @@ def my_parser( ):
     parser = argparse.ArgumentParser( description = 'Parsing the arguments for running the simulation' )
     parser.add_argument( '--version'     , action = 'version'     , version = Constants.VERSION )
 
+    # TEMPORARY ARGUMENTS FOR AUTOMATION
+    parser.add_argument( '--order'  , action = 'store'       , type = int   ,  default = 1.0,                   help = 'Start time of the controller'                                                      )
+    parser.add_argument( '--k'      , action = 'store'       , type = float ,  default = 1.0,                   help = 'Start time of the controller'                                                      )
+
     parser.add_argument( '--start_time'  , action = 'store'       , type = float ,  default = 0.0,                   help = 'Start time of the controller'                                                      )
     parser.add_argument( '--run_time'    , action = 'store'       , type = float ,  default = 4.0,                   help = 'Total run time of the simulation'                                                  )
     parser.add_argument( '--model_name'  , action = 'store'       , type = str   ,  default = '2DOF_planar_torque' , help = 'Model name for the simulation'                                                     )
