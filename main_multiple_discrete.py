@@ -2,12 +2,13 @@
 
 # ============================================================================= #
 | Project:        [M3X Whip Project]
-| Title:          Dynamic Motor Primitives, no Kinematic Redundancy
+| Title:          Dynamic Motor Primitives, multiple discrete movement
 | Author:         Moses C. Nah
 | Email:          [Moses] mosesnah@mit.edu
 # ============================================================================= #
 
 """
+
 
 import os
 import sys
@@ -45,9 +46,11 @@ def run_motor_primitives( my_sim ):
 
     # This is for rhythmic movement
     ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 2, ti = args.start_time  )    
+    # ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 2, ti = args.start_time  )    
 
-    # Add the controller and objective of the simulation
-    my_sim.add_ctrl( ctrl )
+
+    init_cond = { "qpos": np.zeros( n ) ,  "qvel": np.zeros( n ) }
+    my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Run the simulation
     my_sim.run( )
@@ -56,19 +59,19 @@ def run_motor_primitives( my_sim ):
 
     my_sim.close( )
 
-
 def run_movement_primitives( my_sim ):
-    NotImplementedError
+    NotImplementedError( )
 
 if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    args.model_name = "2DOF_planar_torque"
-
+    args.model_name = "2DOF_planar_torque"    
     my_sim = Simulation( args )
+
 
     idx = 1
 
     if idx == 1: run_motor_primitives( my_sim )
     else: run_movement_primitives( my_sim )
+

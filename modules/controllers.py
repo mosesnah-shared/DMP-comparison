@@ -112,13 +112,14 @@ class JointImpedanceController( ImpedanceController ):
         self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti" )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "Jp", "Jr"  )
+        self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "ddq"  )
 
         # Generate an empty lists names of parameters
         self.init( )
 
         # The number of submovements
         self.n_movs = 0 
+        self.is_rhythmic = False
 
     def set_impedance( self, Kq: np.ndarray, Bq:np.ndarray ):
 
@@ -129,6 +130,7 @@ class JointImpedanceController( ImpedanceController ):
 
         self.Kq = Kq
         self.Bq = Bq 
+        
 
     def add_mov_pars( self, q0i : np.ndarray, q0f: np.ndarray, D:float, ti: float ):
 
@@ -143,6 +145,18 @@ class JointImpedanceController( ImpedanceController ):
         self.ti.append(   ti )
 
         self.n_movs += 1
+
+
+    def add_rhythmic_mov( self, amp : np.ndarray, w:int ):
+
+        # The center must be a 3D location
+        assert len( amp ) == self.n_act 
+        assert w > 0 
+
+        self.amp = amp
+        self.w   = w
+
+        self.is_rhythmic = True
 
     def input_calc( self, t ):
         """
@@ -161,25 +175,31 @@ class JointImpedanceController( ImpedanceController ):
                 t: The current time of the simulation. 
         """
         assert self.Kq is not None and self.Bq is not None
-        assert self.n_movs >= 1 
+        assert self.n_movs >= 1 or self.is_rhythmic
 
         # Save the current time 
         self.t = t 
 
         # Get the current angular position and velocity of the robot arm only
-        self.q  = np.copy( self.mj_data.qpos[ : self.n_act ] )
-        self.dq = np.copy( self.mj_data.qvel[ : self.n_act ] )
+        self.q   = np.copy( self.mj_data.qpos[ : self.n_act ] )
+        self.dq  = np.copy( self.mj_data.qvel[ : self.n_act ] )
+        self.ddq = np.copy( self.mj_data.qacc[ : self.n_act ] )        
  
         self.q0  = np.zeros( self.n_act )
         self.dq0 = np.zeros( self.n_act )
 
-    
-        for i in range( self.n_movs ):
-            for j in range( self.n_act ):
-                tmp_q0, tmp_dq0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
 
-                self.q0[ j ]  += tmp_q0 
-                self.dq0[ j ] += tmp_dq0
+        if self.n_movs != 0:    
+            for i in range( self.n_movs ):
+                for j in range( self.n_act ):
+                    tmp_q0, tmp_dq0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
+
+                    self.q0[ j ]  += tmp_q0 
+                    self.dq0[ j ] += tmp_dq0
+
+        if self.is_rhythmic:
+            for i in range( self.n_act ):
+                self.q0[ i ] += self.amp[ i ] * np.sin( self.w * t )
 
 
         tau_imp   = self.Kq @ ( self.q0 - self.q ) + self.Bq @ ( self.dq0 - self.dq )
@@ -214,6 +234,9 @@ class CartesianImpedanceController( ImpedanceController ):
         # The number of submovements
         self.n_movs = 0 
 
+        # Set rhythmic movement as false
+        self.is_rhythmic = False
+
     def set_impedance( self, Kx: np.ndarray, Bx:np.ndarray ):
 
         # Regardless of planar/spatial robot, DOF = 3
@@ -238,6 +261,20 @@ class CartesianImpedanceController( ImpedanceController ):
 
         self.n_movs += 1
 
+    def add_rhythmic_mov( self, r : int, center: np.ndarray, w:float ):
+
+        # The center must be a 3D location
+        assert len( center ) == 3 
+
+        # The radius and angular velocity should be positive values
+        assert r > 0 and w > 0
+
+        self.center = center
+        self.r = r 
+        self.w = w
+
+        self.is_rhythmic = True
+
     def input_calc( self, t ):
         """
             Descriptions
@@ -254,7 +291,7 @@ class CartesianImpedanceController( ImpedanceController ):
                 t: The current time of the simulation. 
         """
         assert self.Kx is not None and self.Bx is not None
-        assert self.n_movs >= 1 
+        assert self.n_movs >= 1 or self.is_rhythmic
 
         # Save the current time 
         self.t = t 
@@ -275,12 +312,16 @@ class CartesianImpedanceController( ImpedanceController ):
         self.x0  = np.zeros( 3 )
         self.dx0 = np.zeros( 3 )
 
-        for i in range( self.n_movs ):
-            for j in range( 3 ):
-                tmp_x0, tmp_dx0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+        if self.n_movs != 0:
+            for i in range( self.n_movs ):
+                for j in range( 3 ):
+                    tmp_x0, tmp_dx0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
 
-                self.x0[ j ]  += tmp_x0 
-                self.dx0[ j ] += tmp_dx0
+                    self.x0[ j ]  += tmp_x0 
+                    self.dx0[ j ] += tmp_dx0
+
+        if self.is_rhythmic:
+            self.x0 += self.center + np.array( [ self.r * np.sin( self.w * t ), -self.r * np.cos( self.w * t ), 0] )
 
         self.tau  = self.J.T @ ( self.Kx @ ( self.x0 - self.xEE ) + self.Bx @ (self.dx0 - self.dxEE ) )
 
