@@ -34,21 +34,21 @@ def run_motor_primitives( my_sim ):
     # Define the controller 
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
-    ctrl.set_impedance( Kq = 10 * np.eye( ctrl.n_act ), Bq = 5 *np.eye( ctrl.n_act ) )
+    ctrl.set_impedance( Kq = np.diag( [ 300, 150 ] ), Bq = np.diag( [ 30, 3 ] ) )
     n = my_sim.n_act
 
-    mov_arrs1  = np.array(  [ -0.5, -0.5,  0.1,  0.1, 0.6  ] )     
-    mov_arrs2  = np.array(  [    0,    0, -0.6, -0.6, 0.7  ] )     
+    mov_arrs  = np.array(  [  0., 0., 0., 1., 1. ] )     
 
-    ctrl.add_mov_pars( q0i = mov_arrs1[ :n ], q0f = mov_arrs1[ n:2*n ], D = mov_arrs1[ -1 ], ti = args.start_time  )    
-    ctrl.add_mov_pars( q0i = mov_arrs2[ :n ], q0f = mov_arrs2[ n:2*n ], D = mov_arrs2[ -1 ], ti = 0.4  )    
+    ctrl.add_mov_pars( q0i = mov_arrs[ :n ], q0f = mov_arrs[ n:2*n ], D = mov_arrs[ -1 ], ti = args.start_time + 3  )    
+    ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ :n ] - mov_arrs[ n:2*n ], D = mov_arrs[ -1 ], ti = args.start_time + 4* mov_arrs[ -1 ] )        
 
     # Add rhythmic movements too
+    ctrl.add_rhythmic_mov( amp = np.array( [ 0., 0.3 ] ), w = 3 )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
 
-    init_cond = { "qpos": mov_arrs1[ :n ] ,  "qvel": np.zeros( n ) }
+    init_cond = { "qpos": np.zeros( n ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Run the simulation
@@ -65,10 +65,9 @@ if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
+    args.model_name = "2DOF_planar_torque"    
     my_sim = Simulation( args )
 
-    args.model_name = "2DOF_planar_torque"
-    my_sim = Simulation( args )
 
     idx = 1
 

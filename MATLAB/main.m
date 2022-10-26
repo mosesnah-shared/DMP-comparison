@@ -17,11 +17,63 @@ myFigureConfig( 'fontsize',  20, ...
 global c                                                                   % Setting color structure 'c' as global variable
 c  = myColor(); 
 
-%% ==================================================================
-%% (1-) Obstacle Avoidance 
-%% -- (1A) Dynamic Motor Primitives - Order 
 
-dir_name = '../results/obstacle_avoidance/dynamic_motor_primitives/different_order/';
+%% ==================================================================
+%% (--) Joint-space Trajectory Tracking
+%% -- (-A) Dynamic Motor Primitives 
+
+file_name = '../results/joint_space_traj_track/dynamic_motor/ctrl_joint_imp.mat';
+
+data_raw = load( file_name );
+data_raw.q0i = double( data_raw.q0i );
+data_raw.q0f = double( data_raw.q0f );
+data_raw.D   = double( data_raw.D   );
+data_raw.ti  = double( data_raw.ti  );
+
+%% -- (-B) Dynamic Movement Primitives 
+
+f = figure( ); a = axes( 'parent', f );
+hold on
+
+[ q0_arr, dq0_arr, ddq0_arr ] = min_jerk_traj( data_raw.t_arr, data_raw.q0i, data_raw.q0f, data_raw.D, data_raw.ti );
+
+subplot( 3, 1, 1 )
+plot( data_raw.t_arr, data_raw.q_arr );
+hold on
+plot( data_raw.t_arr, q0_arr, 'linewidth', 4, 'linestyle', '--' );
+
+subplot( 3, 1, 2 )
+plot( data_raw.t_arr, data_raw.dq_arr );
+hold on
+plot( data_raw.t_arr, dq0_arr, 'linewidth', 4, 'linestyle', '--' );
+
+subplot( 3, 1, 3 )
+plot( data_raw.t_arr, data_raw.ddq_arr );
+hold on
+plot( data_raw.t_arr, ddq0_arr, 'linewidth', 4, 'linestyle', '--' );
+
+
+%% ==================================================================
+%% (--) Task-space Trajectory Tracking
+%% -- (-A) Dynamic Motor Primitives 
+
+
+
+
+
+%% -- (-B) Dynamic Movement Primitives 
+
+
+
+
+
+
+
+%% ==================================================================
+%% (--) Obstacle Avoidance 
+%% -- (-A) Dynamic Motor Primitives - Order 
+
+dir_name = '../results/obstacle_avoidance/dynamic_motor/different_order/';
 
 N = 7;
 data_raw1 = cell( 1, N );
