@@ -2,13 +2,12 @@
 
 # ============================================================================= #
 | Project:        [M3X Whip Project]
-| Title:          Dynamic Motor Primitives, the most basic script
+| Title:          Dynamic Motor Primitives, Joint-space trajectory planning.
 | Author:         Moses C. Nah
 | Email:          [Moses] mosesnah@mit.edu
 # ============================================================================= #
 
 """
-
 
 import os
 import sys
@@ -23,15 +22,12 @@ from simulation   import Simulation
 from controllers  import JointImpedanceController
 from constants    import my_parser
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "DMP_references/dmpbbo-master" ) )
+sys.path.append( os.path.join( os.path.dirname(__file__), "DMP_references/pydmps-master" ) )
 
-
-# The DMP Modules
-# Library from: https://github.com/stulp/dmpbbo
-# COMMIT NUMBER: 1941694ce81645390c677a44af75cec31e632999
-from dmpbbo.dmps.Dmp                                       import Dmp
-from dmpbbo.dmps.Trajectory                                import Trajectory
-from dmpbbo.functionapproximators.FunctionApproximatorLWR import FunctionApproximatorLWR
+# DMP Libraries from Travis DeWolf
+# [REF] https://github.com/studywolf/pydmps
+from pydmps-master.pydmps.dmp           import DMPs
+from pydmps-master.pydmps.dmp_discrete  import DMPs_discrete
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -43,17 +39,19 @@ args, unknown = parser.parse_known_args( )
 
 def run_motor_primitives( my_sim ):
 
-
     # Define the controller 
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
+    # The joint stiffness and damping matrices
     ctrl.set_impedance( Kq = np.array( [20] ), Bq = np.array( [ 10 ] ) )
 
+    # Minimum Jerk Trajectory
     ctrl.add_mov_pars( q0i = np.array( [ 0 ] ) , q0f = np.array( [ 1 ] ), D = 1, ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
 
+    # The initial condition of the robot and its setup
     init_cond = { "qpos": np.array( [ 0 ] ) ,  "qvel": np.array( [ 0 ] ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
@@ -73,13 +71,20 @@ def run_movement_primitives( my_sim ):
 
     # Initial and Final Joint Posture
     q0i = np.array( [ 0.0 ] )
-    q0f = np.array( [ 0.9 ] )
+    q0f = np.array( [ 1.0 ] )
+
 
     traj_min_jerk = Trajectory.from_min_jerk( ts, q0i, q0f )
-
+    # traj_min_jerk.ts[ -1 ] provides the duration of the movement 
+    # traj_min_jerk.ys[ 0,: ] provides the initial positions
+    # traj_min_jerk.ys[ -1,: ] provides the final positions
+    
     # traj_min_jerk.plot( )    
+    
+    # The number of dof of the robot
     n_dims = 1
 
+    # Function fitting
     # Locally Weighted Regression
     # There are Three Options for Function Fitting
     # We have FunctionApproximatorLWR  (Locally Weighted Regression)
@@ -95,29 +100,31 @@ def run_movement_primitives( my_sim ):
     #     cur_widths[cc] = w    
     # Zero Regularization
 
-    function_apps = [ FunctionApproximatorLWR( 40 ) for _ in range( n_dims ) ]
+    function_apps = [ FunctionApproximatorLWR( 2 ) for _ in range( n_dims ) ]
 
     # We use the "IJSPEERT_2002_MOVEMENT" MOVEMENT DMP TYPE, for the Comparison
-    dmp = Dmp.from_traj( traj_min_jerk, function_apps, dmp_type="IJSPEERT_2002_MOVEMENT", forcing_term_scaling="G_MINUS_Y0_SCALING" )
+    dmp = Dmp.from_traj( traj_min_jerk, function_apps, dmp_type = "IJSPEERT_2002_MOVEMENT", forcing_term_scaling = "G_MINUS_Y0_SCALING" )
 
-    # You don't need this in detail
-    xs_ana, xds_ana, forcing_terms_ana, fa_outputs_ana = dmp.analytical_solution(ts)
+    # Analytical Solution provides the solution at given time.
+    xs_ana, xds_ana, forcing_terms_ana, fa_outputs_ana = dmp.analytical_solution( ts )
 
-    dt = ts[1]
+
+    # A Single Time-step 
+    dt = ts[ 1 ]
     # dim_x = xs_ana.shape[1]
     dim_x = 5 
     # dim_dmp = 3 * y_init.size + 2
     # The reason for 3 is ( y, z, goal, phase, gating ), where phase and gating are s (canonical system)
 
-    xs_step  = np.zeros([N, dim_x])
-    xds_step = np.zeros([N, dim_x])
+    xs_step  = np.zeros( [ N, dim_x ] )
+    xds_step = np.zeros( [ N, dim_x ] )
 
     x, xd = dmp.integrate_start( )
-    xs_step[ 0 , : ] = x
+    xs_step[  0, : ] = x
     xds_step[ 0, : ] = xd
 
-    for tt in range(1, N):
-        xs_step[tt, :], xds_step[tt, :] = dmp.integrate_step(dt, xs_step[tt - 1, :])
+    for tt in range( N ):
+        xs_step[ tt, : ], xds_step[ tt, : ] = dmp.integrate_step( dt, xs_step[ tt - 1, : ] )
 
     dmp.plot(ts, xs_ana, xds_ana, forcing_terms=forcing_terms_ana, fa_outputs=fa_outputs_ana)
     # dmp.plot(ts, xs_step, xds_step)
@@ -144,7 +151,6 @@ if __name__ == "__main__":
 
     idx = 2
     my_sim = Simulation( args )
-
 
     if idx == 1: run_motor_primitives( my_sim )
     else: run_movement_primitives( my_sim )
