@@ -26,8 +26,7 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "DMP_references/pydmps
 
 # DMP Libraries from Travis DeWolf
 # [REF] https://github.com/studywolf/pydmps
-from pydmps-master.pydmps.dmp           import DMPs
-from pydmps-master.pydmps.dmp_discrete  import DMPs_discrete
+from pydmps.dmp_discrete  import DMPs_discrete
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -65,82 +64,42 @@ def run_motor_primitives( my_sim ):
 
 def run_movement_primitives( my_sim ):    
     
+    # The number of basis functions
+    n_bfs = 10
+
     # Define the Minimum Jerk Trajectory
-    N  = 1000
-    ts = np.linspace( 0, args.run_time, N ) 
+    # The movement parameters of minimum-jerk-trajectory
+    p0i = 0.0
+    p0f = 1.0
+    D   = 1.0
+    N   = 100
+    t_arr = np.linspace( 0, D, N )
+    y_des   = np.zeros( ( 1, N ) )
+    dy_des  = np.zeros( ( 1, N ) )
+    ddy_des = np.zeros( ( 1, N ) )
 
-    # Initial and Final Joint Posture
-    q0i = np.array( [ 0.0 ] )
-    q0f = np.array( [ 1.0 ] )
+    y_des[ 0, : ]   =          p0i + ( p0f - p0i ) * ( 10 * ( t_arr / D ) ** 3 -  15 * ( t_arr / D ) ** 4 +   6 * ( t_arr / D ) ** 5 )
+    dy_des[ 0, : ]  =         1./D * ( p0f - p0i ) * ( 30 * ( t_arr / D ) ** 2 -  60 * ( t_arr / D ) ** 3 +  30 * ( t_arr / D ) ** 4 )
+    ddy_des[ 0, : ] = 1./( D** 2 ) * ( p0f - p0i ) * ( 60 * ( t_arr / D )      - 180 * ( t_arr / D ) ** 2 + 120 * ( t_arr / D ) ** 3 )
 
-
-    traj_min_jerk = Trajectory.from_min_jerk( ts, q0i, q0f )
-    # traj_min_jerk.ts[ -1 ] provides the duration of the movement 
-    # traj_min_jerk.ys[ 0,: ] provides the initial positions
-    # traj_min_jerk.ys[ -1,: ] provides the final positions
+    dmp = DMPs_discrete( n_dmps = 1, n_bfs=n_bfs, dt=D/N )
+    dmp.imitate_path( y_des = y_des )
+    # dmp.imitate_path2( y_des = y_des, dy_des = dy_des, ddy_des = ddy_des )
     
-    # traj_min_jerk.plot( )    
-    
-    # The number of dof of the robot
-    n_dims = 1
+    # change the scale of the movement
+    # dmp.goal[ 0] = 3
+    # dmp.goal[ 1] = 2
 
-    # Function fitting
-    # Locally Weighted Regression
-    # There are Three Options for Function Fitting
-    # We have FunctionApproximatorLWR  (Locally Weighted Regression)
-    # We have FunctionApproximatorRBFN (Radial Bounded Function Network)
-    # We have FunctionApproximatorWLS  (Weighted Least Square)
+    y_track, dy_track, ddy_track = dmp.rollout()
 
-    # FunctionApproximatorLWR( n_bfs_per_dim, intersection_height=0.5, regularization=0.0):
-    # The intersection height is the height of the Guassian
-    # height = meta_params["intersection_height"]
-    # centers, widths = Gaussian.get_centers_and_widths(inputs, n_bfs_per_dim, height)
-    # for cc in range(n_bfs - 1):
-    #     w = np.sqrt(np.square(cur_centers[cc + 1] - cur_centers[cc]) / (-8 * np.log(h)))
-    #     cur_widths[cc] = w    
-    # Zero Regularization
-
-    function_apps = [ FunctionApproximatorLWR( 2 ) for _ in range( n_dims ) ]
-
-    # We use the "IJSPEERT_2002_MOVEMENT" MOVEMENT DMP TYPE, for the Comparison
-    dmp = Dmp.from_traj( traj_min_jerk, function_apps, dmp_type = "IJSPEERT_2002_MOVEMENT", forcing_term_scaling = "G_MINUS_Y0_SCALING" )
-
-    # Analytical Solution provides the solution at given time.
-    xs_ana, xds_ana, forcing_terms_ana, fa_outputs_ana = dmp.analytical_solution( ts )
-
-
-    # A Single Time-step 
-    dt = ts[ 1 ]
-    # dim_x = xs_ana.shape[1]
-    dim_x = 5 
-    # dim_dmp = 3 * y_init.size + 2
-    # The reason for 3 is ( y, z, goal, phase, gating ), where phase and gating are s (canonical system)
-
-    xs_step  = np.zeros( [ N, dim_x ] )
-    xds_step = np.zeros( [ N, dim_x ] )
-
-    x, xd = dmp.integrate_start( )
-    xs_step[  0, : ] = x
-    xds_step[ 0, : ] = xd
-
-    for tt in range( N ):
-        xs_step[ tt, : ], xds_step[ tt, : ] = dmp.integrate_step( dt, xs_step[ tt - 1, : ] )
-
-    dmp.plot(ts, xs_ana, xds_ana, forcing_terms=forcing_terms_ana, fa_outputs=fa_outputs_ana)
-    # dmp.plot(ts, xs_step, xds_step)
-    
-    lines, axs = traj_min_jerk.plot()
-    plt.setp(lines, linestyle="-", linewidth=4, color=(0.8, 0.8, 0.8))
-    plt.setp(lines, label="demonstration")
-
-    traj_reproduced = dmp.states_as_trajectory( ts, xs_step, xds_step)
-    lines, axs = traj_reproduced.plot(axs)
-    plt.setp(lines, linestyle="--", linewidth=2, color=(0.0, 0.0, 0.5))
-    plt.setp(lines, label="reproduced")
-
-    plt.legend()
+    plt.figure(2)
+    # plt.subplot(211)
+    plt.plot(y_track, lw=2)
+    plt.plot(dy_track, lw=2)
+    plt.plot(ddy_track, lw=2)
+    # plt.subplot(212)
+    # plt.plot(y_track[:, 1], lw=2)
     plt.show( )
-
 
 if __name__ == "__main__":
 
