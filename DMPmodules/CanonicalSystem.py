@@ -53,12 +53,12 @@ class CanonicalSystem:
         
 if __name__ == "__main__":
     
-    N = 100
-    t_arr = np.linspace( 0, 30, N )
 
-    discrete_cs = CanonicalSystem( mov_type = "rhythmic" )
+    N  = 1000
+    cs = CanonicalSystem( mov_type = "rhythmic" )
 
-    s_arr =  discrete_cs.get_value( t_arr )
+    t_arr = np.linspace( 0.0, 4 * np.pi, N )
+    s_arr = cs.get_value( t_arr )
 
-    plt.plot( s_arr )
+    plt.plot( t_arr, s_arr )
     plt.show( )

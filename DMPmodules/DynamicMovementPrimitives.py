@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from CanonicalSystem import CanonicalSystem 
-from BasisFunctions  import BasisFunctions 
+from BasisFunctions  import BasisFunctions
 
 class DynamicMovementPrimitives:
     """
@@ -51,67 +51,61 @@ class DynamicMovementPrimitives:
         assert t_arr.ndim == 1 and y_des.ndim == 1 and dy_des.ndim == 1 and ddy_des.ndim == 1
         assert len( t_arr ) == len( y_des ) and len( t_arr ) == len( dy_des ) and len( t_arr ) == len( ddy_des )
 
-        # Assert the existence of canonical system and basis functions to fit
+        # Assert the existence of canonical system 
         assert self.cs is not None
 
         # Assert the number of basis functions should be more than 2
         n_bfs >= 2
         
-        # Define the Basis functions 
-        # Define the basis function for the nonlinear forcing term
-        self.basis_functions = BasisFunctions( mov_type = mov_type, n_bfs = n_bfs, alpha_s = cs.alpha_s )
-
         # Save the desired trajectory and the number of basis function s
-        self.t_arr   =  t_arr
-        self.y_des   =  y_des
-        self.dy_des  = dy_des
+        self.t_arr   =   t_arr
+        self.y_des   =   y_des
+        self.dy_des  =  dy_des
         self.ddy_des = ddy_des
 
-        # The parameter tau must be adjusted to the duration of the demonstration.
-        # Page 342 of REF
-        # [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
-        self.tau = t_arr[ -1 ]
+        # The tau of the system must be adjusted before-hand!
+        # Tau must be defined 
 
-        # Setting-up the initial and goal positions of the trajectory 
         if self.mov_type == "discrete":
+
+            # Page 342 of REF
+            # [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
             y0   = y_des[ 0  ]
             goal = y_des[ -1 ]
             
         else:
-            # For rhythmic movement, there must be some additional work to be done
-            NotImplementedError( )
+            y0   = y_des[ 0 ]
+            goal = 0.5 * (  max( y_des ) + min( y_des ) )
+
+
+        # Define the basis function for the nonlinear forcing term
+        self.basis_functions = BasisFunctions( mov_type = self.mov_type, n_bfs = n_bfs, cs = self.cs )                 
 
         # Calculate the target forces based on the desired y, dy and ddy
         # Equation 2.12 of [REF]
         # [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
         self.f_target = ( self.tau ** 2 ) * self.ddy_des - self.alpha_z * self.beta_z * ( goal - self.y_des ) + self.alpha_z * self.tau * self.dy_des 
+
         
         self.weights = np.zeros( n_bfs )
 
-        # Setting-up the goal position and others
-        if self.mov_type == "discrete":
-
-            # The center and width of the Gaussian basis function is simply 
-            # Page 5 of [REF]
-            # [REF] Dynamic Movement Primitives in Robotics: A Tutorial Survey
-
-            # The canonical system's values 
-            s_arr = self.cs.get_value( self.t_arr ) * ( goal - y0 ) 
+        # The xi array of Eq. 2.14 of [REF]
+        # [REF] IBID
+        s_arr = self.cs.get_value( self.t_arr ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones( len( self.t_arr) )
             
-            for i in range( n_bfs ):
-                gamma = np.array( [ self.basis_functions.calc_activation( i, self.cs.get_value( t ) ) for t in self.t_arr ] )
-                self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr )
-            
-        else:
-            # For rhytmic movement, there must be some additional work to be done
-            NotImplementedError( )
+        for i in range( n_bfs ):
+            gamma = np.array( [ self.basis_functions.calc_activation( i, self.cs.get_value( t ) ) for t in self.t_arr ] )
+            self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr )            
+
 
     def integrate( self, y0, z0, g, dt, N ):
         """
             Integrating the tranformation system
         """
-        y_arr = np.zeros( N )
-        z_arr = np.zeros( N )
+        y_arr  = np.zeros( N )
+        z_arr  = np.zeros( N )
+        dy_arr = np.zeros( N )        
+        dz_arr = np.zeros( N )
 
         y_arr[ 0 ] = y0
         z_arr[ 0 ] = z0
@@ -131,18 +125,28 @@ class DynamicMovementPrimitives:
                 s = self.cs.get_value( t )
 
                 psi_arr = np.array( [ self.basis_functions.calc_activation( j, s ) for j in np.arange( self.basis_functions.n_bfs ) ] )
-                f = np.sum( self.weights * psi_arr ) / np.sum( psi_arr )
+
+                # if psi_arr is super small, then just set for as zero since this implies there is no activation
+                if np.sum( psi_arr ) != 0:
+                    f = np.sum( self.weights * psi_arr ) / np.sum( psi_arr )
+                else:
+                    f = 0
                 
+
                 # If discrete movement, multiply (g-y0) and s on the value 
-                f *= s * ( g - y0 )
+                if self.mov_type == "discrete":
+                    f *= s * ( g - y0 ) 
 
-            dy = z_arr[ i ] / self.tau
-            dz = ( self.alpha_z * self.beta_z * ( g - y_arr[ i ] ) - self.alpha_z * z_arr[ i ] + f ) / self.tau
+            dy_arr[ i ] = z_arr[ i ] / self.tau
+            dz_arr[ i ] = ( self.alpha_z * self.beta_z * ( g - y_arr[ i ] ) - self.alpha_z * z_arr[ i ] + f ) / self.tau
 
-            y_arr[ i + 1 ] = dy * dt + y_arr[ i ]
-            z_arr[ i + 1 ] = dz * dt + z_arr[ i ]
+            y_arr[ i + 1 ] = dy_arr[ i ] * dt + y_arr[ i ]
+            z_arr[ i + 1 ] = dz_arr[ i ] * dt + z_arr[ i ]
 
-        return t_arr, y_arr, z_arr 
+        dy_arr[ -1 ] = dy_arr[ -2 ]
+        dz_arr[ -1 ] = dz_arr[ -2 ]
+
+        return t_arr, y_arr, z_arr, dy_arr, dz_arr
 
 
 if __name__ == "__main__":
@@ -158,7 +162,7 @@ if __name__ == "__main__":
     dmp = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
 
     # Train the movement as minimum jerk trajectory 
-    N = 100 
+    N = 150 
     t_arr = 0.01 * np.arange( N )
     pi = 0.
     pf = 1.
@@ -171,15 +175,14 @@ if __name__ == "__main__":
     # Imitation learning of this trajectory 
     dmp.add_canonical_system( cs )
 
-    dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = 100 )
+    dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = 10 )
 
-    t_arr2, y_arr, z_arr = dmp.integrate( 0, 0, pf, 0.001, 1000 )
+    t_arr2, y_arr, z_arr = dmp.integrate( 0, 0, pf, 0.001, 1500 )
 
     plt.plot( t_arr2, y_arr )
-    plt.plot( t_arr, y_des )
     plt.plot( t_arr2, z_arr )
-    plt.plot( t_arr, dy_des )
 
+    plt.plot( t_arr, y_des  ) 
+    plt.plot( t_arr, dy_des )    
 
     plt.show( )
-

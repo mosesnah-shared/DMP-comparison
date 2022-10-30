@@ -30,8 +30,6 @@ data_raw.q0f = double( data_raw.q0f );
 data_raw.D   = double( data_raw.D   );
 data_raw.ti  = double( data_raw.ti  );
 
-%% -- (-B) Dynamic Movement Primitives 
-
 f = figure( ); a = axes( 'parent', f );
 hold on
 
@@ -41,16 +39,42 @@ subplot( 3, 1, 1 )
 plot( data_raw.t_arr, data_raw.q_arr );
 hold on
 plot( data_raw.t_arr, q0_arr, 'linewidth', 4, 'linestyle', '--' );
+set( gca, 'xlim', [ 0, 1.3 ] )
 
 subplot( 3, 1, 2 )
 plot( data_raw.t_arr, data_raw.dq_arr );
 hold on
 plot( data_raw.t_arr, dq0_arr, 'linewidth', 4, 'linestyle', '--' );
+set( gca, 'xlim', [ 0, 1.3 ] )
 
 subplot( 3, 1, 3 )
 plot( data_raw.t_arr, data_raw.ddq_arr );
 hold on
 plot( data_raw.t_arr, ddq0_arr, 'linewidth', 4, 'linestyle', '--' );
+
+set( gca, 'xlim', [ 0, 1.3 ] )
+
+%% -- (-B) Dynamic Movement Primitives 
+
+file_name = '../results/joint_space_traj_track/dynamic_movement/dmp1.mat';
+data_raw2 = load( file_name );
+
+% hold on
+% 
+% plot( data_raw2.t_des, data_raw2.y_des )
+% plot( data_raw2.t_des, data_raw2.dy_des )
+% plot( data_raw2.t_des, data_raw2.ddy_des )
+
+hold on
+
+plot( data_raw2.t_arr, data_raw2.y_arr )
+plot( data_raw2.t_arr, data_raw2.z_arr )
+plot( data_raw2.t_arr, data_raw2.dz_arr )
+
+set( gca, 'xlim', [ 0, 1.3 ] )
+
+
+%% -- (-C) Graph for Comparison
 
 
 %% ==================================================================
