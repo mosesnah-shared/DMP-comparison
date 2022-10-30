@@ -159,17 +159,20 @@ def min_jerk_traj( t: float, ti: float, tf: float, pi: float, pf: float, D: floa
     if   t <= ti:
         pos = pi
         vel = 0
+        acc = 0
 
     elif ti < t <= tf:
         tau = ( t - ti ) / D                                                # Normalized time
-        pos =     pi + ( pf - pi ) * ( 10. * tau ** 3 - 15. * tau ** 4 +  6. * tau ** 5 )
-        vel =   1./D * ( pf - pi ) * ( 30. * tau ** 2 - 60. * tau ** 3 + 30. * tau ** 4 )
+        pos =             pi + ( pf - pi ) * ( 10. * tau ** 3 -  15. * tau ** 4 +   6. * tau ** 5 )
+        vel =           1./D * ( pf - pi ) * ( 30. * tau ** 2 -  60. * tau ** 3 +  30. * tau ** 4 )
+        acc =  ( 1./D ** 2 ) * ( pf - pi ) * ( 60. * tau ** 1 - 180. * tau ** 2 + 120. * tau ** 3 )
 
     else:
         pos = pf
         vel = 0
+        acc = 0
 
-    return pos, vel
+    return pos, vel, acc
 
 def quat2euler( quat: np.ndarray ):                                         
     """

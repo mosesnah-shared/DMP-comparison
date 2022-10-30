@@ -109,7 +109,7 @@ class JointImpedanceController( ImpedanceController ):
         super( ).__init__( mj_sim, mj_args, name )
 
         # The name of the controller parameters 
-        self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti" )
+        self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti", "amps", "omegas", "offsets" )
 
         # The name of variables that will be saved 
         self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "ddq"  )
@@ -119,7 +119,9 @@ class JointImpedanceController( ImpedanceController ):
 
         # The number of submovements
         self.n_movs = 0 
-        self.is_rhythmic = False
+
+        # The number of oscillations
+        self.n_movs_rhyth = 0
 
     def set_impedance( self, Kq: np.ndarray, Bq:np.ndarray ):
 
@@ -147,16 +149,16 @@ class JointImpedanceController( ImpedanceController ):
         self.n_movs += 1
 
 
-    def add_rhythmic_mov( self, amp : np.ndarray, w:int ):
+    def add_rhythmic_mov( self, amp: np.ndarray, offset:np.ndarray, omega:float ):
 
         # The center must be a 3D location
-        assert len( amp ) == self.n_act 
-        assert w > 0 
+        assert len( amp ) == self.n_act and len( offset ) == self.n_act
+        assert omega > 0 
 
-        self.amp = amp
-        self.w   = w
-
-        self.is_rhythmic = True
+        self.amps.append( amp )
+        self.omegas.append( omega )
+        self.offsets.append( offset )
+        self.n_movs_rhyth += 1
 
     def input_calc( self, t ):
         """
@@ -175,7 +177,7 @@ class JointImpedanceController( ImpedanceController ):
                 t: The current time of the simulation. 
         """
         assert self.Kq is not None and self.Bq is not None
-        assert self.n_movs >= 1 or self.is_rhythmic
+        assert self.n_movs >= 1 or self.n_movs_rhyth >= 1
 
         # Save the current time 
         self.t = t 
@@ -192,15 +194,16 @@ class JointImpedanceController( ImpedanceController ):
         if self.n_movs != 0:    
             for i in range( self.n_movs ):
                 for j in range( self.n_act ):
-                    tmp_q0, tmp_dq0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
+                    tmp_q0, tmp_dq0, _ = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
 
                     self.q0[ j ]  += tmp_q0 
                     self.dq0[ j ] += tmp_dq0
 
-        if self.is_rhythmic:
-            for i in range( self.n_act ):
-                self.q0[ i ] += self.amp[ i ] * np.sin( self.w * t )
-
+        if self.n_movs_rhyth != 0: 
+            for i in range( self.n_movs_rhyth ):
+                for j in range( self.n_act ):
+                    self.q0[  i ] += self.amps[ i ][ j ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ] )
+                    self.dq0[ i ] += self.amps[ i ][ j ] * np.cos( self.omegas[ i ] * t + self.offsets[ i ] ) * self.omegas[ i ]
 
         tau_imp   = self.Kq @ ( self.q0 - self.q ) + self.Bq @ ( self.dq0 - self.dq )
         self.tau  = tau_imp
@@ -315,7 +318,7 @@ class CartesianImpedanceController( ImpedanceController ):
         if self.n_movs != 0:
             for i in range( self.n_movs ):
                 for j in range( 3 ):
-                    tmp_x0, tmp_dx0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+                    tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
 
                     self.x0[ j ]  += tmp_x0 
                     self.dx0[ j ] += tmp_dx0
