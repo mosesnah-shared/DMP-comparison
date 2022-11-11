@@ -1,3 +1,5 @@
+from cmath import nan
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -131,6 +133,9 @@ class DynamicMovementPrimitives:
                     f = np.sum( self.weights * psi_arr ) / np.sum( psi_arr )
                 else:
                     f = 0
+
+                # In case if f is nan, then just set f as 0 
+                if math.isnan( f ): f = 0 
                 
 
                 # If discrete movement, multiply (g-y0) and s on the value 

@@ -59,16 +59,21 @@ def run_motor_primitives( mov_type ):
 
     else:
         # Multiple rhythmic movements
-        ctrl.add_rhythmic_mov( amp = np.array( [ .5 ] ), offset = np.array( [ 0.0 ] ), omega = 1. * np.pi  )    
-        # ctrl.add_rhythmic_mov( amp: np.ndarray, offset:np.ndarray, w:int ):  )    
-        # ctrl.add_rhythmic_mov( amp: np.ndarray, offset:np.ndarray, w:int ):  )    
+        # np.sin( 2 pi * t ) 
+        ctrl.add_rhythmic_mov( amp = np.array( [ 1.0 ] ), offset = np.array( [ 0.0 ] ), omega = 1. ) #2 * np.pi  )    
+
+        # 0.25 * np.sin( 4pi t + 0.77 + np.pi/2)                      
+        # ctrl.add_rhythmic_mov( amp = np.array( [ -0.25 ] ), offset = np.array( [ 0.77 - np.pi/2 ] ), omega = 4 * np.pi  )    
+
+        # 0.1 * np.sin( 6pi t + 3.0 )                      
+        # ctrl.add_rhythmic_mov( amp = np.array( [ 0.10 ] ), offset = np.array( [ 3.0 ] ), omega = 6 * np.pi  )    
 
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
 
     # The initial condition of the robot and its setup
-    init_cond = { "qpos": np.array( [ 0 ] ) ,  "qvel": np.array( [ 0 ] ) }
+    init_cond = { "qpos": np.array( [ 0 ] ) ,  "qvel": np.array( [ 1 ] ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Run the simulation
@@ -81,8 +86,6 @@ def run_motor_primitives( mov_type ):
 
 def run_movement_primitives( mov_type ):    
 
-    # Quick Test of Dynamic Movement Primitives 
-    # The type of movement
     # Define the canonical system
     cs = CanonicalSystem( mov_type = mov_type )
 
@@ -96,7 +99,7 @@ def run_movement_primitives( mov_type ):
 
         # Train the movement as minimum jerk trajectory 
         # The total time T = N * 0.01
-        N  = 130
+        N  = 10
         dt = 0.01
         T  = N * dt
         t_arr = dt * np.arange( N )
@@ -116,19 +119,19 @@ def run_movement_primitives( mov_type ):
         # Setting up the canonical system's parameters
         cs.tau = D
 
-        n_bfs = 100
+        n_bfs = 10
         dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = n_bfs )
 
 
         t_arr2, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( 0, 0, pf, 0.001, int( T/0.001 ) )   
 
-        # plt.plot( t_arr2, y_arr, linestyle="dashed" )         
-        plt.plot( t_arr2, dz_arr, linestyle="dashed" )         
+        plt.plot( t_arr2, y_arr, linestyle="dashed" )         
+        # plt.plot( t_arr2, dz_arr, linestyle="dashed" )         
         # plt.plot( t_arr2, z_arr )         
 
-        # plt.plot(  t_arr, y_des )         
+        plt.plot(  t_arr, y_des )         
         # plt.plot( t_arr, dy_des )         
-        plt.plot( t_arr, ddy_des )                 
+        # plt.plot( t_arr, ddy_des )                 
 
         plt.show( )
     else:
@@ -136,13 +139,13 @@ def run_movement_primitives( mov_type ):
         # Train the movement as minimum jerk trajectory 
         # The total time T = N * 0.01
 
-        omega = 2 * np.pi
+        omega = 1 # np.pi
 
         # The period (Tp) of the rhythmic movement is defined
         Tp = 2. * np.pi / omega
 
         # The Total time T
-        T  = 2. * Tp
+        T  = 3. * Tp
         dt = 0.01
         N  = int( Tp/dt )
         t_arr = dt * np.arange( N )
@@ -151,29 +154,29 @@ def run_movement_primitives( mov_type ):
         ddy_des = np.zeros( N )
 
         for i, t in enumerate( t_arr ):
-            y_des[   i ] =  np.sin( omega * t )              + 0.25 * np.sin( 2 * omega * t + 0.77 + np.pi/2)                      + 0.1 * np.sin( 3 * omega * t + 3.0)
-            dy_des[  i ] =  np.cos( omega * t ) * omega      + 0.25 * ( 2 * omega ) * np.cos( 2 * omega * t + 0.77 + np.pi/2)      + 0.1 * 3 * omega * np.cos( 3 * omega * t + 3.0)
-            ddy_des[ i ] = -np.sin( omega * t ) * omega ** 2 - 0.25 * ( 2 * omega ) ** 2 * np.sin( 2 * omega * t + 0.77 + np.pi/2) - 0.1 * ( 3 * omega ) ** 2 * np.sin( 3 * omega * t + 3.0)
+            y_des[   i ] =  np.sin( omega * t )             # - 0.25 * np.sin( 2 * omega * t + 0.77 - np.pi/2 )                      + 0.1 * np.sin( 3 * omega * t + 3.0)
+            dy_des[  i ] =  np.cos( omega * t ) * omega     # - 0.25 * ( 2 * omega ) * np.cos( 2 * omega * t + 0.77 - np.pi/2 )      + 0.1 * 3 * omega * np.cos( 3 * omega * t + 3.0)
+            ddy_des[ i ] = -np.sin( omega * t ) * omega ** 2# + 0.25 * ( 2 * omega ) ** 2 * np.sin( 2 * omega * t + 0.77 - np.pi/2 ) - 0.1 * ( 3 * omega ) ** 2 * np.sin( 3 * omega * t + 3.0)
 
         # Setting up the canonical system's parameters
-        cs.tau = Tp / ( 2 * np.pi)
+        cs.tau = Tp / ( 2 * np.pi) 
 
         # The number of Basis Functions
-        n_bfs = 40
+        n_bfs = 15
         dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = n_bfs )
 
-        t_arr2, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( y_des[ 0 ], dy_des[ 0 ], 0.5 * np.min( y_des ) + 0.5 * np.max( y_des ), 0.001, int( T / 0.001 ) )                    
+        t_arr2, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( y_des[ 0 ], dy_des[ 0 ], 0.5 * np.min( y_des ) + 0.5 * np.max( y_des ), 0.001, round( T / 0.001 ) )                    
         
-        # plt.plot( t_arr2, y_arr, linestyle="dashed" )         
+
+        plt.plot( t_arr2, y_arr, linestyle="dashed" )         
         # plt.plot( t_arr2, dz_arr, linestyle="dashed" )         
         # plt.plot( t_arr2, z_arr )         
 
-        # plt.plot(  t_arr, y_des )         
+        plt.plot(  t_arr, y_des )         
         # plt.plot( t_arr, dy_des )         
         # plt.plot( t_arr, ddy_des )                 
 
-        # plt.show( )
-
+        plt.show( )
 
     # Stuffs for saving the data
     if args.is_save_data:
@@ -187,7 +190,7 @@ def run_movement_primitives( mov_type ):
         dict  = { "mov_type" : mov_type, "t_des": t_arr, "y_des": y_des, "dy_des": dy_des, "ddy_des": ddy_des, "n_bfs": n_bfs, 
                 "t_arr": t_arr2, "y_arr": y_arr, "z_arr": z_arr, "dy_arr": dy_arr, "dz_arr": dz_arr, "tau": dmp.tau, 
                 "weights": dmp.weights, "centers": dmp.basis_functions.centers, "heights": dmp.basis_functions.heights, 
-                "alpha_s": dmp.cs.alpha_s, "alpha_z": dmp.alpha_z, "beta_z": dmp.beta_z }
+                 "alpha_z": dmp.alpha_z, "beta_z": dmp.beta_z }
         
         scipy.io.savemat( file_name, { **dict } )    
 
@@ -200,8 +203,8 @@ if __name__ == "__main__":
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
 
-    mov_type = "rhythmic"
-    ctrl_type = "movement"
+    mov_type  = "rhythmic"
+    ctrl_type = "motor"
 
     if    ctrl_type == "motor"   :    run_motor_primitives( mov_type )
     elif  ctrl_type == "movement": run_movement_primitives( mov_type )
