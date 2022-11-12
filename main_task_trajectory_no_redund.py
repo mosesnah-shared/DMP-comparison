@@ -207,10 +207,6 @@ def run_movement_primitives( mov_type ):
         t_arr2, y_arr2, z_arr2, dy_arr2, dz_arr2 = dmp2.integrate( y_des[ 0 ], dy_des[ 0 ], c, 0.001, round( 2 * Tp/0.001 ) )   
 
 
-        # plt.plot( t_arr1, y_arr1 )
-        # plt.plot( t_arr,  x_des , linestyle= "dashed" )
-        # plt.plot( t_arr2, y_arr2 )
-        # plt.show( )
 
 
     # Stuffs for saving the data

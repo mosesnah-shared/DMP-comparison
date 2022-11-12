@@ -398,3 +398,6 @@ plot( obs_pos( 1 ), obs_pos( 2 ), 'o', 'linewidth', 3, 'color', 'k', 'markeredge
 legend( "No $Z_2$", "$n=2$", "$n=3$", "$n=4$", "$n=5$", "$n=6$", "$n=7$", "Obstacle", 'fontsize', 24 )
 xlabel( 'x (m)', 'fontsize', 35 )
 ylabel( 'y (m)', 'fontsize', 35 )
+
+
+

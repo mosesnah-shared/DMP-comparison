@@ -45,7 +45,12 @@ def run_motor_primitives( mov_type ):
 
     args.model_name = "1DOF_planar_torque"
 
+    # Set the camera position of the simulation
+    # Lookat [3] Distance, Elevation, Azimuth
+    args.cam_pos = np.array( [ 0, 0, 0, 3, -90, 90 ] )
+
     my_sim = Simulation( args )
+
 
     # Define the controller 
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
@@ -203,7 +208,7 @@ if __name__ == "__main__":
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
 
-    mov_type  = "rhythmic"
+    mov_type  = "discrete"
     ctrl_type = "motor"
 
     if    ctrl_type == "motor"   :    run_motor_primitives( mov_type )
