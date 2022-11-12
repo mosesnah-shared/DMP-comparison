@@ -138,7 +138,7 @@ def quat2rot( quat: np.ndarray ):
 
 
 
-def min_jerk_traj( t: float, ti: float, tf: float, pi: float, pf: float, D: float ):
+def min_jerk_traj( t: float, ti: float,  pi: float, pf: float, D: float ):
     """
         Returning the 1D position and velocity data at time t of the minimum-jerk-trajectory ( current time )
         Time should start at t = 0
@@ -153,16 +153,15 @@ def min_jerk_traj( t: float, ti: float, tf: float, pi: float, pf: float, D: floa
             [6]  D: duration
     """
 
-    assert  t >=  0 and ti >= 0 and tf >= 0 and D >= 0
-    assert tf >= ti
+    assert  t >=  0 and ti >= 0 and D >= 0
 
     if   t <= ti:
         pos = pi
         vel = 0
         acc = 0
 
-    elif ti < t <= tf:
-        tau = ( t - ti ) / D                                                # Normalized time
+    elif ti < t <= ti + D:
+        tau = ( t - ti ) / D                               
         pos =             pi + ( pf - pi ) * ( 10. * tau ** 3 -  15. * tau ** 4 +   6. * tau ** 5 )
         vel =           1./D * ( pf - pi ) * ( 30. * tau ** 2 -  60. * tau ** 3 +  30. * tau ** 4 )
         acc =  ( 1./D ** 2 ) * ( pf - pi ) * ( 60. * tau ** 1 - 180. * tau ** 2 + 120. * tau ** 3 )

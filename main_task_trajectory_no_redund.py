@@ -132,7 +132,7 @@ def run_movement_primitives( mov_type ):
         ddx_des = np.zeros( N )
 
         for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, D, xEEi[ 0 ], xEEf[ 0 ], D  )
+            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, xEEi[ 0 ], xEEf[ 0 ], D  )
             x_des[   i ] = tmp_pos
             dx_des[  i ] = tmp_vel
             ddx_des[ i ] = tmp_acc
@@ -143,7 +143,7 @@ def run_movement_primitives( mov_type ):
         ddy_des = np.zeros( N )
 
         for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, D, xEEi[ 1 ], xEEf[ 1 ], D  )
+            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, xEEi[ 1 ], xEEf[ 1 ], D  )
             y_des[   i ] = tmp_pos
             dy_des[  i ] = tmp_vel
             ddy_des[ i ] = tmp_acc            
