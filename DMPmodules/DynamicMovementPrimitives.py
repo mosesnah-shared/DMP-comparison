@@ -44,6 +44,18 @@ class DynamicMovementPrimitives:
         assert cs.mov_type == self.mov_type
         self.cs = cs
 
+    def step( self, g, y, z, f, dt ):
+        """
+            Get the next y and z value  
+        """
+        dy = z / self.tau
+        dz = ( self.alpha_z * self.beta_z * ( g - y ) - self.alpha_z * z + f ) / self.tau
+
+        y_new = dy * dt + y
+        z_new = dz * dt + z
+
+        return y_new, z_new 
+
     def imitation_learning( self, t_arr, y_des, dy_des, ddy_des, n_bfs ):
         """
             Learning the weights, center position and height of the basis functions
@@ -137,7 +149,6 @@ class DynamicMovementPrimitives:
                 # In case if f is nan, then just set f as 0 
                 if math.isnan( f ): f = 0 
                 
-
                 # If discrete movement, multiply (g-y0) and s on the value 
                 if self.mov_type == "discrete":
                     f *= s * ( g - y0 ) 
