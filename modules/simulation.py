@@ -177,7 +177,7 @@ class Simulation:
         """
 
         # Raw string to float. 
-        tmp = str2float( self.args.cam_pos )
+        tmp = str2float( self.args.cam_pos ) if not isinstance( self.args.cam_pos, np.ndarray ) else self.args.cam_pos
 
         # There should be six variables
         assert len( tmp ) == 6

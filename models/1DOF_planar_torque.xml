@@ -23,8 +23,8 @@
               height="100"/>
 
      <!-- Joint and Limb Color -->
-     <material name = "JointColor"     rgba = "1.0 1.0 0.0 1.0"/>
-     <material name = "LimbColor"      rgba = "0.7 0.7 0.7 1.0"/>
+		 <material name="JointColor" 		 rgba="0.75 0.0 0.75 1" />
+		 <material name="LimbColor" 		 rgba="0.1 0.1 0.1 1" />
 
   </asset>
 

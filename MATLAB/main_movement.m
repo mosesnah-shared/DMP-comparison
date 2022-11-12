@@ -118,12 +118,12 @@ s_arr = mod( t_arr/tau, 2 * pi );
 plot( t_arr, s_arr, 'linewidth', 5, 'color', c.black );
 xlabel( '$t$', 'fontsize', 30)
 ylabel( '$s$', 'fontsize', 30 )
-set( gca, 'xlim', [ 0, 6*pi ], 'xtick', [ 0, 2*pi, 4*pi, 6*pi ], 'xticklabel', { '0', '$2\pi$', '$4\pi$', '$6\pi$' }, 'fontsize', 25 )
+set( gca, 'xlim', [ 0, 6*pi ],'ylim', [ 0, 2*pi ], 'xtick', [ 0, 2*pi, 4*pi, 6*pi ], 'ytick', [ 0, pi, 2*pi],  'yticklabel', { '0', '$\pi$', '$2\pi$' }, 'xticklabel', { '0', '$2\pi$', '$4\pi$', '$6\pi$' }, 'fontsize', 25 )
 
 % Plot y and y_des
 subplot( 2, 2, 4 )
 hold on
-text( -2.5,0.9,'D')
+text( -2.5,0.83,'D')
 omega = 1 / tau;
 
 plot( t_arr, data_raw.y_arr, 'linewidth', 3, 'color', c.black );
@@ -178,7 +178,7 @@ ylabel( '$f^*(s)$', 'fontsize', 30 )
 mySaveFig( gcf, 'movement_rhythmic_example' )
 
 %% ==================================================================
-%% (--) Analyze the Dynamic Motor Primitives
+%% (--) Analyze Dynamic Motor Primitives
 %% -- (-A) Discrete Movement Example
 close all
 % Discrete 
@@ -237,4 +237,107 @@ set( gca, 'xlim', [ 0, 6 * pi ], 'xtick', [ 0, 1*pi, 2*pi, 3*pi, 4*pi, 5*pi, 6*p
 ylabel( '$F$', 'fontsize', 30 )
 xlabel( '$t$', 'fontsize', 30 )
 mySaveFig( gcf, 'motor_example' )
+
+%% ==================================================================
+%% (--) Submovements Examples
+
+close all
+
+
+xi = 0;
+xf = 1;
+D  = 1;
+ti = 0;
+t_arr = ti: 0.001: 3;
+
+[y_arr1, dy_arr1, ~] = min_jerk_traj( t_arr, xi, xf, D, ti );
+[y_arr2, dy_arr2, ~] = min_jerk_traj( t_arr, xi, -0.6, D, 0.3 );
+[y_arr3, dy_arr3, ~] = min_jerk_traj( t_arr, xi,  0.4, D, 0.7 );
+
+subplot( 2, 2, 1 )
+hold on
+plot( t_arr, 8/15 * dy_arr1, 'linewidth', 4, 'color' ,'k' )
+set( gca, 'xlim', [ 0, 1 ], 'fontsize', 25, 'ytick', [0, 1]  )
+ylabel( '$\hat{\sigma}(t)$', 'fontsize', 30 )
+text( -0.10, 0.90, 'A', 'fontsize', 30 )
+
+subplot( 2, 2, 3 )
+hold on
+
+plot( t_arr, dy_arr1, 'linewidth', 4, 'linestyle', '--', 'color', 'k' )
+plot( t_arr, dy_arr2, 'linewidth', 4, 'linestyle', '--', 'color', 'k' )
+plot( t_arr, dy_arr3, 'linewidth', 4, 'linestyle', '--', 'color', 'k' )
+plot( t_arr, ( dy_arr1 + dy_arr2 + dy_arr3 ), 'linewidth', 10, 'color', c.blue )
+ylabel( '$\dot{x}_0(t)$', 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 1.8], 'ylim', [-1.5,2.0],'xtick', 0:0.6:1.8, 'fontsize', 25 )
+text( -0.18, 1.70, 'C', 'fontsize', 30 )
+
+subplot( 2, 2, 2 )
+hold on
+plot( t_arr, 8/15 * y_arr1, 'linewidth', 3, 'color', 'k' )
+set( gca, 'xlim', [ 0, 1],  'fontsize', 25 )
+ylabel( '$x_0(t)$', 'fontsize', 30 )
+
+text( -0.10, 0.54, 'B', 'fontsize', 30 )
+
+
+subplot( 2, 2, 4 )
+hold on
+
+plot( t_arr, y_arr1 + y_arr2 + y_arr3, 'linewidth', 10, 'color', c.blue )
+ylabel( '$x_0(t)$', 'fontsize', 30 )
+% xlabel( '$t$', 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 1.8], 'xtick', 0:0.6:1.8, 'fontsize', 25 )
+sgtitle( 'Submovements', 'fontsize', 35 )
+text( -0.20, 0.72, 'D', 'fontsize', 30 )
+
+
+han=axes( gcf,'visible','off'); 
+han.XLabel.Visible='on';
+
+xlabel(han,'$t$', 'fontsize', 30 );
+
+
+%% ==================================================================
+%% (--) Submovements and Oscillations Examples
+
+close all
+
+xi = 0;
+xf = 1;
+D  = 1;
+ti = 0;
+t_arr = ti: 0.001: 1;
+
+[y_arr1, dy_arr1, ~] = min_jerk_traj( t_arr, xi, xf, D, ti );
+y_arr1 = y_arr1 * 8/15;
+y_arr2 = 0.2 * sin( 12 * pi * t_arr );
+subplot( 2, 2, 1 )
+hold on
+plot( t_arr, y_arr1, 'linewidth', 4, 'color' ,'k' )
+set( gca, 'fontsize', 25, 'xtick', 0:0.5:2  )
+title( 'Submovement', 'fontsize', 30 )
+ylabel( '$x_0(t)$', 'fontsize', 30 )
+
+text( -0.15, 0.55, 'A', 'fontsize', 30 )
+
+subplot( 2, 2, 2 )
+hold on
+plot( t_arr, y_arr2 , 'linewidth', 4, 'color' ,'k' )
+set( gca, 'fontsize', 25, 'xtick', 0:0.5:2  )
+    title( 'Oscillation', 'fontsize', 30 )
+text( -0.15, 0.165, 'B', 'fontsize', 30 )
+
+
+subplot( 2, 2, [3,4] )
+hold on
+plot( t_arr, y_arr1 +  y_arr2 , 'linewidth', 4, 'color' ,'k'  )
+plot( t_arr, y_arr1 , 'linewidth', 3, 'linestyle', '--', 'color' ,'k' )
+set( gca, 'fontsize', 25, 'xtick', 0:0.5:2  )
+title( 'Submovement + Oscillation', 'fontsize', 30 )
+xlabel( '$t$', 'fontsize', 30 )
+ylabel( '$x_0(t)$', 'fontsize', 30 )
+text( -0.07, 0.7, 'C', 'fontsize', 30 )
+
+
 
