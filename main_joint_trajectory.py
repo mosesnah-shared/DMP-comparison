@@ -3,6 +3,7 @@
 # ============================================================================= #
 | Project:        [M3X Whip Project]
 | Title:          Dynamic Motor Primitives, Joint-space trajectory planning.
+|                 Section 3.2 
 | Author:         Moses C. Nah
 | Email:          [Moses] mosesnah@mit.edu
 # ============================================================================= #
@@ -11,14 +12,20 @@
 
 import os
 import sys
+import math
 import shutil
 import numpy      as np
 import scipy.io
 from datetime  import datetime
 from matplotlib  import pyplot as plt
 
-# To Add Local Files, adding the directory via sys module
-# __file__ saves the current directory of this file. 
+# ======================================================================== #
+# ======================================================================== #
+#
+#                            ADDING LOCAL MODULES                          #
+#
+# ======================================================================== #
+# ======================================================================== #
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
@@ -27,42 +34,44 @@ from utils        import min_jerk_traj
 from constants    import my_parser
 from constants    import Constants as C
 
+
+# ======================================================================== #
+# ======================================================================== #
+#
+#               ADDING MODULES FOR DYNAMIC MOVEMENT PRIMITIVES             #
+#
+# ======================================================================== #
+# ======================================================================== #
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
 
-
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
-                                                                                
-# Generate the parser, which is defined 
-parser = my_parser( )
-args, unknown = parser.parse_known_args( )
 
+def run_motor_primitives( my_sim, mov_type ):
 
-def run_motor_primitives( mov_type ):
-
-    args.model_name = "1DOF_planar_torque"
-
-    # Set the camera position of the simulation
-    # Lookat [3] Distance, Elevation, Azimuth
-    args.cam_pos = np.array( [ 0, 0, 0, 3, -90, 90 ] )
-
-    my_sim = Simulation( args )
-
-
-    # Define the controller 
+    # Define the joint-space impedance controller 
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
+    # Get the number of actuators of the robot 
+    nq = ctrl.nq
+
     # The joint stiffness and damping matrices
-    ctrl.set_impedance( Kq = np.array( [ 50.0 ] ), Bq = np.array( [ 25.0 ] ) )
+    ctrl.set_impedance( Kq = 50 * np.eye( nq ), Bq = 25 * np.eye( nq ) )
 
-    if mov_type == "discrete":
-        # Minimum Jerk Trajectory
-        ctrl.add_mov_pars( q0i = np.array( [ 0. ] ) , q0f = np.array( [ 1.0 ] ), D = 1, ti = args.start_time  )    
+    if   mov_type == "discrete":
 
-    else:
+        # The parameters of min-jerk-traj
+        q0i = np.zeros( nq )
+        q0f =  np.ones( nq )
+        D   = 2.0
+
+        # Use minimum-jerk trajectory as 
+        ctrl.add_mov_pars( q0i = q0i , q0f = q0f, D = D, ti = args.start_time  )    
+
+    elif mov_type == "rhythmic":
         # Multiple rhythmic movements
         # np.sin( 2 pi * t ) 
         ctrl.add_rhythmic_mov( amp = np.array( [ 1.0 ] ), offset = np.array( [ 0.0 ] ), omega = 1. ) #2 * np.pi  )    
@@ -78,8 +87,7 @@ def run_motor_primitives( mov_type ):
     my_sim.add_ctrl( ctrl )
 
     # The initial condition of the robot and its setup
-    init_cond = { "qpos": np.array( [ 0 ] ) ,  "qvel": np.array( [ 1 ] ) }
-    my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
+    my_sim.init( qpos = q0i, qvel = np.zeros( nq ) )
 
     # Run the simulation
     my_sim.run( )
@@ -89,57 +97,150 @@ def run_motor_primitives( mov_type ):
     my_sim.close( )
 
 
-def run_movement_primitives( mov_type ):    
+def run_movement_primitives( my_sim, mov_type ):    
 
     # Define the canonical system
     cs = CanonicalSystem( mov_type = mov_type )
 
-    # Dynamic Movement Primitives
-    dmp = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
+    nq = my_sim.nq
+    dt = my_sim.dt
 
-    # Adding the canonical system
-    dmp.add_canonical_system( cs )
+    # Dynamic Movement Primitives 
+    dmp_list = [] 
+    for _ in range( nq ):
+        dmp = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
+        dmp_list.append( dmp )
+        
+        # Adding the canonical system
+        dmp.add_canonical_system( cs )
 
     if mov_type == "discrete":
 
-        # Train the movement as minimum jerk trajectory 
-        # The total time T = N * 0.01
-        N  = 10
-        dt = 0.01
-        T  = N * dt
-        t_arr = dt * np.arange( N )
-        pi, pf, D = 0.0, 1.0, 1.0
+        # The parameters of min-jerk-traj
+        q0i = np.zeros( nq )
+        q0f =  np.ones( nq )
+        D   = 2.0
 
-        # def min_jerk_traj( t: float, ti: float, tf: float, pi: float, pf: float, D: float ):
-        y_des   = np.zeros( N )
-        dy_des  = np.zeros( N )
-        ddy_des = np.zeros( N )
+        # The time constant tau is the duration of the movement. 
+        cs.tau = D        
 
-        for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, pi, pf, D  )
-            y_des[   i ] = tmp_pos
-            dy_des[  i ] = tmp_vel
-            ddy_des[ i ] = tmp_acc
+        # The number of sample points for imitation learning
+        P = 100
 
-        # Setting up the canonical system's parameters
-        cs.tau = D
+        # The time step of imitation learning
+        # This is simply defined by D/P
+        tmp_dt = D/P
 
-        n_bfs = 10
-        dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = n_bfs )
+        # The P samples points of q_des, dq_des, ddq_des
+        q_des   = np.zeros( ( nq, P + 1 ) )
+        dq_des  = np.zeros( ( nq, P + 1 ) ) 
+        ddq_des = np.zeros( ( nq, P + 1 ) )
+
+        for i in range( nq ):
+            for j in range( P + 1 ):
+                t = tmp_dt * j
+                q_des[ i, j ], dq_des[ i, j ], ddq_des[ i, j ] = min_jerk_traj( t, 0.0, q0i[ i ], q0f[ i ], D  )
+
+    
+        # The number of basis functions
+        N = 10
+
+        # The time array for imitation learning
+        # This learns the best fit weight of the dmp
+        # For this, we need to define the 
+
+        for i in range( nq ):
+            t_arr = tmp_dt * np.arange( P + 1 )
+            dmp = dmp_list[ i ]
+            dmp.imitation_learning( t_arr, q_des[ i, : ], dq_des[ i, : ], ddq_des[ i, : ], n_bfs = N )
+
+        # Now, we integrate this solution
+        # For this, the initial and final time of the simulation is important
+        N_sim = round( args.run_time/dt  )
+        q_command = np.zeros( ( nq, N_sim + 1 ) )
+
+        for i in range( nq ):
+
+            dmp = dmp_list[ i ]
+
+            y_curr = q0i[ i ]
+            z_curr = 0
+
+            for j in range( N_sim + 1 ):
+                t = dt * j 
+
+                if t <= args.start_time: 
+                    q_command[ i, j ] = q0i[ i ]
+
+                else:
+
+                    # Integrate the solution 
+                    # Calculate the force from weights
+
+                    # Get the current canonical function value
+                    s = cs.get_value( t - args.start_time )
+
+                    psi_arr = np.array( [ dmp.basis_functions.calc_activation( k, s ) for k in np.arange( dmp.basis_functions.n_bfs ) ] )
+
+                    # if psi_arr is super small, then just set for as zero since this implies there is no activation
+                    if np.sum( psi_arr ) != 0:
+                        f = np.sum( dmp.weights * psi_arr ) / np.sum( psi_arr )
+                    else:
+                        f = 0
+
+                    # In case if f is nan, then just set f as 0 
+                    if math.isnan( f ): f = 0 
+
+                    f *= s * ( q0f[ i ] - q0i[ i ] ) 
+
+                    y_new, z_new ,_ ,_ = dmp.step( q0f[ i ], y_curr, z_curr, f, dt )
+                    q_command[ i, j ] = y_new
+                    y_curr = y_new
+                    z_curr = z_new 
+
+        # Since we now know the q_command, looping through the simulation 
+        # We assume pure position control 
+        t = 0.
+        idx= 0
+        T = args.run_time 
+        frames = [ ]
+        my_sim.init( qpos = q0i, qvel = np.zeros( nq ) )
+        
+        if args.cam_pos is not None: my_sim.set_camera_pos( ) 
 
 
-        t_arr2, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( 0, 0, pf, 0.001, int( T/0.001 ) )   
+        while t <= T + 1e-7:
 
-        plt.plot( t_arr2, y_arr, linestyle="dashed" )         
-        # plt.plot( t_arr2, dz_arr, linestyle="dashed" )         
-        # plt.plot( t_arr2, z_arr )         
+            # Render the simulation if mj_viewer exists        
+            my_sim.mj_viewer.render( )
 
-        plt.plot(  t_arr, y_des )         
-        # plt.plot( t_arr, dy_des )         
-        # plt.plot( t_arr, ddy_des )                 
+            if args.is_record_vid: 
+                # Read the raw rgb image
+                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
 
-        plt.show( )
-    else:
+                # Convert BGR to RGB and flip upside down.
+                rgb_img = np.flip( rgb_img, axis = 0 )
+                
+                # Add the frame list, this list will be converted to a video via moviepy library
+                frames.append( rgb_img )  
+
+            # If reset button (BACKSPACE) is pressed
+            if my_sim.mj_viewer.is_reset:
+                my_sim.mj_viewer.is_reset = False
+            
+            # If SPACE BUTTON is pressed
+            if my_sim.mj_viewer.is_paused:    continue
+
+            my_sim.mj_data.qpos[ : ] = q_command[ :, idx ]
+
+            my_sim.step( )
+            idx += 1
+            t += dt
+        
+
+
+    elif mov_type == "rhythmic":
+
 
         # Train the movement as minimum jerk trajectory 
         # The total time T = N * 0.01
@@ -183,7 +284,7 @@ def run_movement_primitives( mov_type ):
 
         plt.show( )
 
-    # Stuffs for saving the data
+    # Saving the data for analysis
     if args.is_save_data:
         tmp_dir  = C.TMP_DIR + datetime.now( ).strftime( "%Y%m%d_%H%M%S/" )
         os.mkdir( tmp_dir )  
@@ -204,15 +305,29 @@ def run_movement_primitives( mov_type ):
             
 
 if __name__ == "__main__":
+                                                                                
+    # Parse arguments given from the terminal
+    parser = my_parser( )
+    args, unknown = parser.parse_known_args( )
 
-    # Generate an instance of our Simulation
-    # The model is generated since the model name is passed via arguments
-
+    # Define the type of movement and its control method
     mov_type  = "discrete"
-    ctrl_type = "motor"
+    ctrl_type = "movement"
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( mov_type )
-    elif  ctrl_type == "movement": run_movement_primitives( mov_type )
+    assert mov_type  in [ "discrete", "rhythmic" ]
+    assert ctrl_type in [    "motor", "movement" ]
+
+    # Define the robot that we will use 
+    args.model_name = "2DOF_planar_torque"
+
+    # Set the camera position of the simulation
+    # Lookat [3] Distance, Elevation, Azimuth
+    args.cam_pos = np.array( [ 0, 1, 0, 5, -90, 90 ] )
+
+    my_sim = Simulation( args )    
+
+    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim, mov_type )
+    elif  ctrl_type == "movement": run_movement_primitives( my_sim, mov_type )
 
     
 
