@@ -11,15 +11,23 @@
 
 import os
 import sys
+import math
 import shutil
-import numpy      as np
+import numpy             as np
+import matplotlib.pyplot as plt
 import scipy.io
-from datetime   import datetime
-from matplotlib import pyplot as plt
-from mujoco_py  import functions
+from datetime  import datetime
+from mujoco_py import functions
 
-# To Add Local Files, adding the directory via sys module
-# __file__ saves the current directory of this file. 
+
+
+# ======================================================================== #
+# ======================================================================== #
+#                                                                          #
+#                            ADDING LOCAL MODULES                          #
+#                                                                          #
+# ======================================================================== #
+# ======================================================================== #
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
@@ -28,6 +36,13 @@ from utils        import min_jerk_traj
 from constants    import my_parser
 from constants    import Constants as C
 
+# ======================================================================== #
+# ======================================================================== #
+#                                                                          #
+#               ADDING MODULES FOR DYNAMIC MOVEMENT PRIMITIVES             #
+#                                                                          #
+# ======================================================================== #
+# ======================================================================== #
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
@@ -35,12 +50,9 @@ from DynamicMovementPrimitives  import DynamicMovementPrimitives
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
-                                                                                
-# Generate the parser, which is defined 
-parser = my_parser( )
-args, unknown = parser.parse_known_args( )
+  
 
-
+# Helper Functions generated from MATLAB
 def getC( qpos, qvel  ):
     q1 = qpos[ 0 ]
     q2 = qpos[ 1 ]
@@ -84,7 +96,6 @@ def getC( qpos, qvel  ):
 
     return C 
 
-
 def getdJ( qpos, qvel ):
     q1 = qpos[ 0 ]
     q2 = qpos[ 1 ]
@@ -119,15 +130,7 @@ def getdJ( qpos, qvel ):
     return dJ
         
 
-def run_motor_primitives( mov_type ):
-
-    args.model_name = "5DOF_planar_torque"
-
-    # Set the camera position of the simulation
-    # Lookat [3] Distance, Elevation, Azimuth
-    args.cam_pos = np.array( [ 0, 0, 0, 10, -90, 90 ] )
-
-    my_sim = Simulation( args )
+def run_motor_primitives( my_sim, mov_type ):
 
     # Define the controller 
     ctrl1 = CartesianImpedanceController( my_sim, args, name = "task_imp" )
@@ -135,7 +138,6 @@ def run_motor_primitives( mov_type ):
 
     # Define the controller 
     ctrl2 = JointImpedanceController( my_sim, args, name = "joint_imp" )
-
     # The joint stiffness and damping matrices
     n = my_sim.n_act
     ctrl2.set_impedance( Kq = 0 * np.eye( n ), Bq = 30 * np.eye( n ) )
@@ -158,31 +160,13 @@ def run_motor_primitives( mov_type ):
         # Define the final posture 
         xEEf = xEEi + np.array( [ 3.0, 0, 0 ] )
 
-        ctrl1.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 1, ti = args.start_time  )    
+        ctrl1.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 2, ti = args.start_time  )    
 
         # Set the joint controller as zero
         ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
 
-        
-    else:
-        r = 0.5 
-        omega0 = np.pi
-
-        q1 = np.pi * 1/6
-
-        ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
-        init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( n ) }
-
-        my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
-
-        # Get the initial position of the robot 
-        xEEi = my_sim.mj_data.get_site_xpos( "site_end_effector" )
-        c = xEEi[ 1 ]        
-
-        ctrl1.add_rhythmic_mov( amp = r, center = [ 0, c + r ], omega = omega0 )
-
-        # Set the joint controller as zero
-        ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
+    elif mov_type == "rhythmic":
+        NotImplementedError( )
 
 
     # Run the simulation
@@ -195,28 +179,25 @@ def run_motor_primitives( mov_type ):
     my_sim.close( )
 
 
-def run_movement_primitives( mov_type ):
+def run_movement_primitives( my_sim, mov_type ):
 
-    args.model_name = "5DOF_planar_torque"
-    my_sim = Simulation( args )
 
+    # Define the canonical system
     cs = CanonicalSystem( mov_type = mov_type )
 
-    # Dynamic Movement Primitives
-    # First  along the x-axis
-    # Second along the y-axis
-    dmp1 = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
-    dmp2 = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
+    n  = my_sim.nq
+    dt = my_sim.dt
 
-    # Adding the canonical system
-    # DMPs share the same canonical system 
-    dmp1.add_canonical_system( cs )
-    dmp2.add_canonical_system( cs )
+    # Dynamic Movement Primitives 
+    # Define for x and y trajectory
+    dmp_list = [] 
+    for _ in range( 2 ):
+        dmp = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
+        dmp_list.append( dmp )
+        
+        # Adding the canonical system
+        dmp.add_canonical_system( cs )      
 
-    T = args.run_time   
-
-    # The duration of the movement
-    D = 1
 
     if mov_type == "discrete":
 
@@ -229,75 +210,108 @@ def run_movement_primitives( mov_type ):
         my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
         # Get the initial position of the end-effector
-        xEEi = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+        p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
         
         # Define the final posture 
-        xEEf = xEEi + np.array( [ 3.0, 0, 0 ] )
+        p0f = p0i + np.array( [ 3.0, 0, 0 ] )
 
-        # The time step for imitation learning is 0.01. 
-        dt = 0.01
-        N = round( T/dt )
-        t_arr = dt * np.arange( N )        
+        D = 2.0        # Duration D = 2 
 
-        # The first DMP is for the x direction
-        x_des   = np.zeros( N )
-        dx_des  = np.zeros( N )
-        ddx_des = np.zeros( N )
+        # The time constant tau is the duration of the movement. 
+        cs.tau = D        
 
-        for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, xEEi[ 0 ], xEEf[ 0 ], D  )
-            x_des[   i ] = tmp_pos
-            dx_des[  i ] = tmp_vel
-            ddx_des[ i ] = tmp_acc
+        # The number of sample points for imitation learning
+        P = 100
 
-        # The second DMP is for the y direction
-        y_des   = np.zeros( N )
-        dy_des  = np.zeros( N )
-        ddy_des = np.zeros( N )
+        # The time step of imitation learning
+        # This is simply defined by D/P
+        tmp_dt = D/P
 
-        for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = min_jerk_traj( t, 0.0, xEEi[ 1 ], xEEf[ 1 ], D  )
-            y_des[   i ] = tmp_pos
-            dy_des[  i ] = tmp_vel
-            ddy_des[ i ] = tmp_acc            
+        # The P samples points of p_des, dp_des, ddp_dex
+        p_des   = np.zeros( ( 2, P + 1 ) )
+        dp_des  = np.zeros( ( 2, P + 1 ) ) 
+        ddp_des = np.zeros( ( 2, P + 1 ) )
 
-        # Setting up the canonical system's parameters
-        cs.tau = D
+        for i in range( 2 ):
+            for j in range( P + 1 ):
+                t = tmp_dt * j
+                p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D  )
 
-        n_bfs = 100
-        dmp1.imitation_learning( t_arr, x_des, dx_des, ddx_des, n_bfs = n_bfs )
-        dmp2.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = n_bfs )
+        # The number of basis functions
+        N = 20
 
-        t_arr1, y_arr1, z_arr1, dy_arr1, dz_arr1 = dmp1.integrate( xEEi[ 0 ], 0, xEEf[ 0 ], dt, round( D/dt ) )   
-        t_arr2, y_arr2, z_arr2, dy_arr2, dz_arr2 = dmp2.integrate( xEEi[ 1 ], 0, xEEf[ 1 ], dt, round( D/dt ) )   
-        
-        # Redefine the new time step 
-        dt  = my_sim.mj_model.opt.timestep         
-        
-        tmp1 = round( args.start_time/ dt )
-        tmp2 = round( ( T - D - args.start_time )/ dt )
-        print( tmp1, tmp2 )
-        x_arr = np.hstack( ( y_arr1[ 0 ] * np.ones( tmp1 ), y_arr1, y_arr1[ -1 ] * np.ones( tmp2 + 1) )  )
-        y_arr = np.hstack( ( y_arr2[ 0 ] * np.ones( tmp1 ), y_arr2, y_arr2[ -1 ] * np.ones( tmp2+ 1 ) )  )
+        # The time array for imitation learning
+        # This learns the best fit weight of the dmp
+        # For this, we need to define the 
 
-        dx_arr = np.hstack( ( np.zeros( tmp1 ), dy_arr1, np.zeros( tmp2+ 1 ) )  )
-        dy_arr = np.hstack( ( np.zeros( tmp1 ), dy_arr2, np.zeros( tmp2 + 1) )  )       
+        for i in range( 2 ):
+            t_arr = tmp_dt * np.arange( P + 1 )
+            dmp = dmp_list[ i ]
+            dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ], n_bfs = N )
 
-        ddx_arr = np.hstack( ( np.zeros( tmp1 ), dz_arr1/cs.tau, np.zeros( tmp2 + 1) )  )
-        ddy_arr = np.hstack( ( np.zeros( tmp1 ), dz_arr2/cs.tau, np.zeros( tmp2 + 1) )  )        
+        # Now, we integrate this solution
+        # For this, the initial and final time of the simulation is important
+        N_sim = round( args.run_time/dt  )
 
-        # Save the p_des, dp_des, ddp_des as a 3 by N array
-        p_des   = np.vstack( (   x_arr,   y_arr, np.zeros( round( T/dt ) + 1) ) )
-        dp_des  = np.vstack( (  dx_arr,  dy_arr, np.zeros( round( T/dt ) + 1) ) )
-        ddp_des = np.vstack( ( ddx_arr, ddy_arr, np.zeros( round( T/dt ) + 1) ) )
+        p_command   = np.zeros( ( 3, N_sim + 1 ) )
+        dp_command  = np.zeros( ( 3, N_sim + 1 ) )
+        ddp_command = np.zeros( ( 3, N_sim + 1 ) )
+
+        for i in range( 2 ):
+
+            dmp = dmp_list[ i ]
+
+            y_curr = p0i[ i ]
+            z_curr = 0
+
+            for j in range( N_sim + 1 ):
+                t = dt * j 
+
+                if t <= args.start_time: 
+                    p_command[ i, j ]   = p0i[ i ]
+                    dp_command[ i, j ]  = 0
+                    ddp_command[ i, j ] = 0
+                else:
+
+                    # Integrate the solution 
+                    # Calculate the force from weights
+
+                    # Get the current canonical function value
+                    s = cs.get_value( t - args.start_time )
+
+                    psi_arr = np.array( [ dmp.basis_functions.calc_activation( k, s ) for k in np.arange( dmp.basis_functions.n_bfs ) ] )
+
+                    # if psi_arr is super small, then just set for as zero since this implies there is no activation
+                    if np.sum( psi_arr ) != 0:
+                        f = np.sum( dmp.weights * psi_arr ) / np.sum( psi_arr )
+                    else:
+                        f = 0
+
+                    # In case if f is nan, then just set f as 0 
+                    if math.isnan( f ): f = 0 
+
+                    f *= s * ( p0f[ i ] - p0i[ i ] ) 
+
+                    y_new, z_new, dy, dz = dmp.step( p0f[ i ], y_curr, z_curr, f, dt )
+                    p_command[ i, j ]   = y_new
+                    dp_command[ i, j ]  = z_new / cs.tau
+                    ddp_command[ i, j ] = dz / cs.tau
+
+                    y_curr = y_new
+                    z_curr = z_new 
 
 
-        t = 0 
+        # Since we now know the q_command, looping through the simulation 
+        # We assume pure position control 
+        t = 0.
+        nstep = 0 
+        T = args.run_time 
         idx = 0 
         frames = [ ]
-        nq = my_sim.mj_model.nq
+        
+        if args.cam_pos is not None: my_sim.set_camera_pos( ) 
 
-        Mtmp = np.zeros( nq * nq )
+        Mtmp = np.zeros( n * n )
 
         # Define the raw simulation 
         while t <= T + 1e-7:
@@ -330,8 +344,8 @@ def run_movement_primitives( mov_type ):
             dq = np.copy( my_sim.mj_data.qvel[ : ] )
 
             # Define the reference p trajectory 
-            dpr  =  dp_des[ :, idx ] + 10 * np.eye( 3 ) @ (  p_des[ :, idx ] -  p )
-            ddpr = ddp_des[ :, idx ] + 10 * np.eye( 3 ) @ ( dp_des[ :, idx ] - dp )
+            dpr  =  dp_command[ :, idx ] + 10 * np.eye( 3 ) @ (  p_command[ :, idx ] -  p )
+            ddpr = ddp_command[ :, idx ] + 10 * np.eye( 3 ) @ ( dp_command[ :, idx ] - dp )
 
             jac_new = np.copy( my_sim.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
             jac_pinv = np.linalg.pinv( jac_new )
@@ -342,10 +356,10 @@ def run_movement_primitives( mov_type ):
             ddqr = jac_pinv @ ( ddpr - dJ @ dq )
 
             functions.mj_fullM( my_sim.mj_model, Mtmp, my_sim.mj_data.qM )
-            Mmat = np.copy( Mtmp.reshape( nq, -1 ) )
+            Mmat = np.copy( Mtmp.reshape( n, -1 ) )
             Cmat = getC( q, dq )
 
-            tau = Mmat @ ddqr + Cmat @ dqr - 10 * np.eye( nq ) @ ( dq - dqr )
+            tau = Mmat @ ddqr + Cmat @ dqr - 10 * np.eye( n ) @ ( dq - dqr )
 
             my_sim.mj_data.ctrl[ : ] = tau 
 
@@ -354,65 +368,33 @@ def run_movement_primitives( mov_type ):
             t += dt
             idx += 1          
 
-
-    else:
-        # For rhythmic movement 
-        # The x and y trajectory 
-        r = 0.5 
-        omega0 = np.pi
-        c = np.sqrt( 2 )
-
-        # The period of the system
-        Tp = 2 * np.pi / omega0 
-        dt = 0.01
-        N  = round( Tp/dt )
-        t_arr = dt * np.arange( N )
-
-        # The first DMP is for the x direction
-        x_des   = np.zeros( N )
-        dx_des  = np.zeros( N )
-        ddx_des = np.zeros( N )
-
-        for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = r * np.sin( omega0 * t ), r * omega0 * np.cos( omega0 * t ), -r * ( omega0 ** 2 ) * np.sin( omega0 * t )
-            x_des[   i ] = tmp_pos
-            dx_des[  i ] = tmp_vel
-            ddx_des[ i ] = tmp_acc
-
-        # The second DMP is for the x direction
-        y_des   = np.zeros( N )
-        dy_des  = np.zeros( N )
-        ddy_des = np.zeros( N )            
-
-        for i, t in enumerate( t_arr ):
-            tmp_pos, tmp_vel, tmp_acc = r * np.cos( omega0 * t ) + c, -r * omega0 * np.sin( omega0 * t ), -r * ( omega0 ** 2 ) * np.cos( omega0 * t )
-            y_des[   i ] = tmp_pos
-            dy_des[  i ] = tmp_vel
-            ddy_des[ i ] = tmp_acc
-
-        # Setting up the canonical system's parameters
-        cs.tau = Tp / ( 2 * np.pi)
-
-        # The number of Basis Functions
-        n_bfs = 40
-        dmp1.imitation_learning( t_arr, x_des, dx_des, ddx_des, n_bfs = n_bfs )
-        dmp2.imitation_learning( t_arr, y_des, dy_des, ddy_des, n_bfs = n_bfs )
-
-        t_arr1, y_arr1, z_arr1, dy_arr1, dz_arr1 = dmp1.integrate( x_des[ 0 ], dx_des[ 0 ], 0, 0.001, round( 2 * Tp/0.001 ) )   
-        t_arr2, y_arr2, z_arr2, dy_arr2, dz_arr2 = dmp2.integrate( y_des[ 0 ], dy_des[ 0 ], c, 0.001, round( 2 * Tp/0.001 ) )   
-
-
+    elif mov_type == "rhythmic":
+        NotImplementedError( )
 
 if __name__ == "__main__":
 
-    # Generate an instance of our Simulation
-    # The model is generated since the model name is passed via arguments
-
     mov_type = "discrete"
     ctrl_type = "movement"
+                                                                                
+    # Generate the parser, which is defined 
+    parser = my_parser( )
+    args, unknown = parser.parse_known_args( )
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( mov_type )
-    elif  ctrl_type == "movement": run_movement_primitives( mov_type )
+    args.model_name = "5DOF_planar_torque"
+    my_sim = Simulation( args )
+
+    assert mov_type  in [ "discrete", "rhythmic" ]
+    assert ctrl_type in [    "motor", "movement" ]
+
+    # Define the robot that we will use 
+    args.model_name = "5DOF_planar_torque"
+
+    # Set the camera position of the simulation
+    # Lookat [3] Distance, Elevation, Azimuth
+    args.cam_pos = np.array( [ 0, 2.5, 0, 10, -90, 90 ] )    
+
+    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim, mov_type )
+    elif  ctrl_type == "movement": run_movement_primitives( my_sim, mov_type )
 
     
 

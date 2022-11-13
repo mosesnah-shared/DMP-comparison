@@ -61,16 +61,33 @@ def run_motor_primitives( my_sim ):
 def run_movement_primitives( my_sim ):
     NotImplementedError( )
 
+    # Generate rhythmic DMP
+
+    # Generate discrete DMP
+    # This will be the goal 
+
+
 if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    args.model_name = "2DOF_planar_torque"    
+    ctrl_type = "movement"
+                                                                                
+    # Generate the parser, which is defined 
+    parser = my_parser( )
+    args, unknown = parser.parse_known_args( )
+
+    args.model_name = "2DOF_planar_torque"
     my_sim = Simulation( args )
 
+    assert ctrl_type in [    "motor", "movement" ]
 
-    idx = 1
+    # Set the camera position of the simulation
+    # Lookat [3] Distance, Elevation, Azimuth
+    args.cam_pos = np.array( [ 0, 1, 0, 5, -90, 90 ] )    
 
-    if idx == 1: run_motor_primitives( my_sim )
-    else: run_movement_primitives( my_sim )
+    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
+    elif  ctrl_type == "movement": run_movement_primitives( my_sim )
+
+    
 

@@ -54,7 +54,7 @@ class DynamicMovementPrimitives:
         y_new = dy * dt + y
         z_new = dz * dt + z
 
-        return y_new, z_new 
+        return y_new, z_new , dy, dz
 
     def imitation_learning( self, t_arr, y_des, dy_des, ddy_des, n_bfs ):
         """

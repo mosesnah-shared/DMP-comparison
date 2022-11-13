@@ -195,7 +195,7 @@ class JointImpedanceController( ImpedanceController ):
         if self.n_movs != 0:    
             for i in range( self.n_movs ):
                 for j in range( self.n_act ):
-                    tmp_q0, tmp_dq0, tmp_ddq0 = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
+                    tmp_q0, tmp_dq0, tmp_ddq0 = min_jerk_traj( t, self.ti[ i ],  self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
 
                     self.q0[ j ]   += tmp_q0 
                     self.dq0[ j ]  += tmp_dq0
@@ -316,7 +316,7 @@ class CartesianImpedanceController( ImpedanceController ):
         if self.n_movs != 0:
             for i in range( self.n_movs ):
                 for j in range( 3 ):
-                    tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.ti[ i ] + self.D[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+                    tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
 
                     self.x0[ j ]  += tmp_x0 
                     self.dx0[ j ] += tmp_dx0
