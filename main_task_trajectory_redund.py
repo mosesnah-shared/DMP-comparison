@@ -16,6 +16,7 @@ import shutil
 import numpy             as np
 import matplotlib.pyplot as plt
 import scipy.io
+import moviepy.editor  as mpy
 from datetime  import datetime
 from mujoco_py import functions
 
@@ -155,18 +156,15 @@ def run_motor_primitives( my_sim, mov_type ):
         my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
         # Get the initial position of the robot 
-        xEEi = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+        p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
         
         # Define the final posture 
-        xEEf = xEEi + np.array( [ 3.0, 0, 0 ] )
+        p0f = p0i + np.array( [ 3.0, 0, 0 ] )
 
-        ctrl1.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 2, ti = args.start_time  )    
+        ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 2, ti = args.start_time  )    
 
         # Set the joint controller as zero
         ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
-
-    elif mov_type == "rhythmic":
-        NotImplementedError( )
 
 
     # Run the simulation
@@ -304,48 +302,70 @@ def run_movement_primitives( my_sim, mov_type ):
         # Since we now know the q_command, looping through the simulation 
         # We assume pure position control 
         t = 0.
-        nstep = 0 
+        n_steps = 0 
         T = args.run_time 
-        idx = 0 
         frames = [ ]
         
         if args.cam_pos is not None: my_sim.set_camera_pos( ) 
 
         Mtmp = np.zeros( n * n )
 
+        q_arr = []
+        dq_arr = []
+        p_arr = []
+        dp_arr = []
+        dpr_arr = []
+        ddpr_arr = []        
+        dqr_arr = []
+        ddqr_arr = []
+
+
         # Define the raw simulation 
         while t <= T + 1e-7:
 
             # Render the simulation if mj_viewer exists        
-            my_sim.mj_viewer.render( )
+            if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
 
-            if args.is_record_vid: 
-                # Read the raw rgb image
-                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+                # Render the simulation if mj_viewer exists        
+                my_sim.mj_viewer.render( )
 
-                # Convert BGR to RGB and flip upside down.
-                rgb_img = np.flip( rgb_img, axis = 0 )
+                if args.is_record_vid: 
+                    # Read the raw rgb image
+                    rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+
+                    # Convert BGR to RGB and flip upside down.
+                    rgb_img = np.flip( rgb_img, axis = 0 )
+                    
+                    # Add the frame list, this list will be converted to a video via moviepy library
+                    frames.append( rgb_img )  
+
+                # If reset button (BACKSPACE) is pressed
+                if my_sim.mj_viewer.is_reset:
+                    my_sim.mj_viewer.is_reset = False
                 
-                # Add the frame list, this list will be converted to a video via moviepy library
-                frames.append( rgb_img )  
-
-            # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset:
-                my_sim.mj_viewer.is_reset = False
-            
-            # If SPACE BUTTON is pressed
-            if my_sim.mj_viewer.is_paused:    continue
+                # If SPACE BUTTON is pressed
+                if my_sim.mj_viewer.is_paused:    continue
 
             # Get current end-effector position and velocity 
             p  = np.copy( my_sim.mj_data.get_site_xpos(   "site_end_effector" ) )
             dp = np.copy( my_sim.mj_data.get_site_xvelp(  "site_end_effector" ) )
 
+            p_arr.append( p )
+            dp_arr.append( dp )
+
             q  = np.copy( my_sim.mj_data.qpos[ : ] )
             dq = np.copy( my_sim.mj_data.qvel[ : ] )
 
+            q_arr.append( q )
+            dq_arr.append( dq )
+
             # Define the reference p trajectory 
-            dpr  =  dp_command[ :, idx ] + 10 * np.eye( 3 ) @ (  p_command[ :, idx ] -  p )
-            ddpr = ddp_command[ :, idx ] + 10 * np.eye( 3 ) @ ( dp_command[ :, idx ] - dp )
+            dpr  =  dp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ (  p_command[ :, n_steps ] -  p )
+            ddpr = ddp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ ( dp_command[ :, n_steps ] - dp )
+
+            dpr_arr.append( dpr )
+            ddpr_arr.append( ddpr )
+
 
             jac_new = np.copy( my_sim.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
             jac_pinv = np.linalg.pinv( jac_new )
@@ -355,18 +375,52 @@ def run_movement_primitives( my_sim, mov_type ):
             dqr  = jac_pinv @ dpr 
             ddqr = jac_pinv @ ( ddpr - dJ @ dq )
 
+            dqr_arr.append( dpr )
+            ddqr_arr.append( ddpr )
+
+
             functions.mj_fullM( my_sim.mj_model, Mtmp, my_sim.mj_data.qM )
             Mmat = np.copy( Mtmp.reshape( n, -1 ) )
             Cmat = getC( q, dq )
 
-            tau = Mmat @ ddqr + Cmat @ dqr - 10 * np.eye( n ) @ ( dq - dqr )
+            tau = Mmat @ ddqr + Cmat @ dqr - 100 * np.eye( n ) @ ( dq - dqr )
 
             my_sim.mj_data.ctrl[ : ] = tau 
 
             my_sim.step( )
 
             t += dt
-            idx += 1          
+            n_steps += 1      
+
+        # If video should be recorded, write the video file. 
+        if args.is_record_vid and frames is not None:
+            clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
+            clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
+
+        # If video recorded/save data is true, then copy the model, main file and the arguments passed
+        if args.is_record_vid or args.is_save_data:
+            shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )                    
+        
+        # Saving the data for analysis
+        if args.is_save_data:
+            
+            # Packing up the arrays as a dictionary
+            # DMP for the first joint
+            dmp1 = dmp_list[ 0 ]
+            dmp2 = dmp_list[ 1 ]
+
+            dict  = { "mov_type" : mov_type, "dt": dt, "x" : p_command[ 0, : ], "y" : p_command[ 1, : ], "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
+                    "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
+                    "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
+                        "q": q_arr, "dq": dq_arr, "p": p_arr, "dp": dp_arr, "dpr": dpr_arr, "ddpr": ddpr_arr, "dqr": dqr_arr, "ddqr": ddqr_arr,
+                    "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+
+            scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )    
+
+        # Move the tmp folder to results if not empty, else just remove the tmp file. 
+        shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+
+
 
     elif mov_type == "rhythmic":
         NotImplementedError( )
@@ -391,7 +445,7 @@ if __name__ == "__main__":
 
     # Set the camera position of the simulation
     # Lookat [3] Distance, Elevation, Azimuth
-    args.cam_pos = np.array( [ 0, 2.5, 0, 10, -90, 90 ] )    
+    args.cam_pos = np.array( [ 2.0, 2.0, 0, 9, -90, 90 ] )    
 
     if    ctrl_type == "motor"   :    run_motor_primitives( my_sim, mov_type )
     elif  ctrl_type == "movement": run_movement_primitives( my_sim, mov_type )

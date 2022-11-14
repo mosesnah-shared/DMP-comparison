@@ -17,6 +17,7 @@ import numpy             as np
 import matplotlib.pyplot as plt
 import scipy.io
 from datetime  import datetime
+import moviepy.editor  as mpy
 
 
 # ======================================================================== #
@@ -66,7 +67,7 @@ def run_motor_primitives( my_sim, mov_type ):
         xEEi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
         idx = args.target_idx
         xEEf = xEEi + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
-        ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 2, ti = args.start_time  )    
+        ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 1, ti = args.start_time  )    
 
     elif mov_type == "rhythmic":
         r = 0.5 
@@ -122,7 +123,7 @@ def run_movement_primitives( my_sim, mov_type ):
         p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
         idx = args.target_idx
         p0f = p0i + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
-        D = 2.0        # Duration D = 2 
+        D = 1.0     
 
         # The time constant tau is the duration of the movement. 
         cs.tau = D        
@@ -204,7 +205,7 @@ def run_movement_primitives( my_sim, mov_type ):
         # Since we now know the q_command, looping through the simulation 
         # We assume pure position control 
         t = 0.
-        nstep = 0 
+        n_steps = 0 
         T = args.run_time 
         frames = [ ]
         
@@ -214,27 +215,30 @@ def run_movement_primitives( my_sim, mov_type ):
         while t <= T + 1e-7:
 
             # Render the simulation if mj_viewer exists        
-            my_sim.mj_viewer.render( )
+            if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
 
-            if args.is_record_vid: 
-                # Read the raw rgb image
-                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+                # Render the simulation if mj_viewer exists        
+                my_sim.mj_viewer.render( )
 
-                # Convert BGR to RGB and flip upside down.
-                rgb_img = np.flip( rgb_img, axis = 0 )
+                if args.is_record_vid: 
+                    # Read the raw rgb image
+                    rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+
+                    # Convert BGR to RGB and flip upside down.
+                    rgb_img = np.flip( rgb_img, axis = 0 )
+                    
+                    # Add the frame list, this list will be converted to a video via moviepy library
+                    frames.append( rgb_img )  
+
+                # If reset button (BACKSPACE) is pressed
+                if my_sim.mj_viewer.is_reset:
+                    my_sim.mj_viewer.is_reset = False
                 
-                # Add the frame list, this list will be converted to a video via moviepy library
-                frames.append( rgb_img )  
+                # If SPACE BUTTON is pressed
+                if my_sim.mj_viewer.is_paused:    continue
 
-            # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset:
-                my_sim.mj_viewer.is_reset = False
-            
-            # If SPACE BUTTON is pressed
-            if my_sim.mj_viewer.is_paused:    continue
-
-            px = p_command[ 0, nstep ]
-            py = p_command[ 1, nstep ]
+            px = p_command[ 0, n_steps ]
+            py = p_command[ 1, n_steps ]
             
             # Solve the inverse kinematics 
             q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
@@ -243,9 +247,37 @@ def run_movement_primitives( my_sim, mov_type ):
             my_sim.mj_data.qpos[ : ] = np.array( [ q1, q2 ] )
 
             my_sim.step( )
-            nstep += 1
+            n_steps += 1
             t += dt
+
+
+        # If video should be recorded, write the video file. 
+        if args.is_record_vid and frames is not None:
+            clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
+            clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
+
+        # If video recorded/save data is true, then copy the model, main file and the arguments passed
+        if args.is_record_vid or args.is_save_data:
+            shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )                    
         
+        # Saving the data for analysis
+        if args.is_save_data:
+            
+            # Packing up the arrays as a dictionary
+            # DMP for the first joint
+            dmp1 = dmp_list[ 0 ]
+            dmp2 = dmp_list[ 1 ]
+
+            dict  = { "mov_type" : mov_type, "dt": dt, "x" : p_command[ 0, : ], "y" : p_command[ 1, : ], "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
+                    "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
+                    "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
+                    "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+
+            scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )    
+
+        # Move the tmp folder to results if not empty, else just remove the tmp file. 
+        shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+
 
     elif mov_type == "rhythmic":
         # For rhythmic movement 
@@ -293,32 +325,6 @@ def run_movement_primitives( my_sim, mov_type ):
         # t_arr1, y_arr1, z_arr1, dy_arr1, dz_arr1 = dmp1.integrate( x_des[ 0 ], dx_des[ 0 ], 0, 0.001, round( 2 * Tp/0.001 ) )   
         # t_arr2, y_arr2, z_arr2, dy_arr2, dz_arr2 = dmp2.integrate( y_des[ 0 ], dy_des[ 0 ], c, 0.001, round( 2 * Tp/0.001 ) )   
 
-
-
-
-    # Stuffs for saving the data
-    if args.is_save_data:
-        tmp_dir  = C.TMP_DIR + datetime.now( ).strftime( "%Y%m%d_%H%M%S/" )
-        os.mkdir( tmp_dir )  
-
-        file_name = tmp_dir + "/dmp1.mat"
-        
-        # # Packing up the arrays as a dictionary
-        # # DMP for the first movement
-        # dict1  = { "mov_type" : mov_type, "t_des1": t_arr, "y_des1": x_des, "dy_des1": dx_des, "ddy_des1": ddx_des, "n_bfs1": n_bfs, 
-        #         "t_arr1": t_arr1, "y_arr1": y_arr1, "z_arr1": z_arr1, "dy_arr1": dy_arr1, "dz_arr1": dz_arr1, "tau1": dmp1.tau, 
-        #         "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
-        #          "alpha_z1": dmp1.alpha_z, "beta_z1": dmp1.beta_z }
-
-        # dict2  = { "mov_type" : mov_type, "t_des2": t_arr, "y_des2": y_des, "dy_des2": dy_des, "ddy_des2": ddy_des, "n_bfs2": n_bfs, 
-        #         "t_arr2": t_arr2, "y_arr2": y_arr2, "z_arr2": z_arr2, "dy_arr": dy_arr2, "dz_arr2": dz_arr2, "tau2": dmp2.tau, 
-        #         "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
-        #          "alpha_z2": dmp2.alpha_z, "beta_z2": dmp2.beta_z }                 
-
-        # scipy.io.savemat( file_name, { **dict1, **dict2 } )    
-
-        # # Move the tmp folder to results if not empty, else just remove the tmp file. 
-        # shutil.move( tmp_dir, C.SAVE_DIR  ) if len( os.listdir( tmp_dir ) ) != 0 else os.rmdir( tmp_dir )
             
 
 if __name__ == "__main__":
@@ -327,7 +333,7 @@ if __name__ == "__main__":
     # The model is generated since the model name is passed via arguments
 
     mov_type = "discrete"
-    ctrl_type = "movement"
+    ctrl_type = "motor"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )
