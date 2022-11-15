@@ -77,7 +77,7 @@ if __name__ == "__main__":
     parser = my_parser( )
     args, unknown = parser.parse_known_args( )
 
-    args.model_name = "2DOF_planar_torque"
+    args.model_name = "1DOF_planar_torque"
     my_sim = Simulation( args )
 
     assert ctrl_type in [    "motor", "movement" ]
@@ -88,6 +88,4 @@ if __name__ == "__main__":
 
     if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
     elif  ctrl_type == "movement": run_movement_primitives( my_sim )
-
-    
 

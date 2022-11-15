@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    ctrl_type = "motor"
+    ctrl_type = "movement"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )

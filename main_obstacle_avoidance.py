@@ -18,7 +18,7 @@ import numpy             as np
 import matplotlib.pyplot as plt
 import scipy.io
 from datetime  import datetime
-
+import moviepy.editor  as mpy
 
 # ======================================================================== #
 # ======================================================================== #
@@ -49,6 +49,7 @@ from DynamicMovementPrimitives  import DynamicMovementPrimitives
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
+
 def run_movement_primitives( my_sim ):
 
     args = my_sim.args
@@ -79,13 +80,13 @@ def run_movement_primitives( my_sim ):
 
     # The parameters of min-jerk-traj
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
-    p0f = p0i + np.array( [ 0., 0.8, 0. ] )
+    p0f = p0i + np.array( [ 0., 1.2, 0. ] )
 
     # Obstacle Location
     o = np.array( [ 0, 0.5 * (p0i[ 1 ] + p0f[ 1 ]), 0 ] )
 
     g   = np.copy( p0f )
-    D1 = 1.0
+    D1 = 3.0
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D1 
@@ -136,11 +137,9 @@ def run_movement_primitives( my_sim ):
         if np.sum( tmp_dp ) != 0:
             theta = np.arccos( np.inner( o - tmp_p ,tmp_dp  ) / ( np.linalg.norm( o - tmp_p ) * np.linalg.norm( tmp_dp)  )   )
 
-            R = np.array( [ [ np.cos( theta - np.pi/2), -np.sin( theta- np.pi/2), 0  ], 
-                             [ np.sin( theta - np.pi/2 ), np.cos( theta - np.pi/2), 0  ],
-                            [                0,                0, 1  ] ] )
+            R = np.array( [ [ 0, 1, 0 ], [ -1, 0, 0 ], [0 ,0, 1 ] ] )
             
-            Cp = 20 * R @ tmp_dp * np.exp( -3 * theta )
+            Cp = 300 * R @ tmp_dp * np.exp( -3 * theta )
 
         else:
             Cp = np.zeros( 3 )
@@ -192,47 +191,80 @@ def run_movement_primitives( my_sim ):
     # Since we now know the q_command, looping through the simulation 
     # We assume pure position control 
     t = 0.
-    nstep = 0 
+    n_steps = 0 
     T = args.run_time 
     frames = [ ]
+
+    t_arr = []
+    q_arr = []
     
     if args.cam_pos is not None: my_sim.set_camera_pos( ) 
     
     while t <= T + 1e-7:
 
         # Render the simulation if mj_viewer exists        
-        my_sim.mj_viewer.render( )
+        if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
 
-        if args.is_record_vid: 
-            # Read the raw rgb image
-            rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+            # Render the simulation if mj_viewer exists        
+            my_sim.mj_viewer.render( )
 
-            # Convert BGR to RGB and flip upside down.
-            rgb_img = np.flip( rgb_img, axis = 0 )
+            if args.is_record_vid: 
+                # Read the raw rgb image
+                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
+
+                # Convert BGR to RGB and flip upside down.
+                rgb_img = np.flip( rgb_img, axis = 0 )
+                
+                # Add the frame list, this list will be converted to a video via moviepy library
+                frames.append( rgb_img )  
+
+            # If reset button (BACKSPACE) is pressed
+            if my_sim.mj_viewer.is_reset:
+                my_sim.mj_viewer.is_reset = False
             
-            # Add the frame list, this list will be converted to a video via moviepy library
-            frames.append( rgb_img )  
+            # If SPACE BUTTON is pressed
+            if my_sim.mj_viewer.is_paused:    continue
 
-        # If reset button (BACKSPACE) is pressed
-        if my_sim.mj_viewer.is_reset:
-            my_sim.mj_viewer.is_reset = False
-        
-        # If SPACE BUTTON is pressed
-        if my_sim.mj_viewer.is_paused:    continue
-
-        px = p_command[ 0, nstep ]
-        py = p_command[ 1, nstep ]
+        px = p_command[ 0, n_steps ]
+        py = p_command[ 1, n_steps ]
         
         # Solve the inverse kinematics 
         q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
         q1 = np.arctan2( py, px ) - q2/2 
 
+        t_arr.append( t )
+        q_arr.append( np.array( [ q1, q2 ] ) )
+
         my_sim.mj_data.qpos[ : ] = np.array( [ q1, q2 ] )
 
         my_sim.step( )
-        nstep += 1
+        n_steps += 1
         t += dt
                 
+    # If video should be recorded, write the video file. 
+    if args.is_record_vid and frames is not None:
+        clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
+        clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
+
+    # If video recorded/save data is true, then copy the model, main file and the arguments passed
+    if args.is_record_vid or args.is_save_data:
+        shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )    
+
+    # Packing up the arrays as a dictionary
+    # DMP for the first joint
+    dmp1 = dmp_list[ 0 ]
+    dmp2 = dmp_list[ 1 ]
+
+    if args.is_save_data:
+        dict  = { "dt": dt, "t_arr":t_arr, "p" : p_command, "q": q_arr, "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
+                "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
+                "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
+                "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+
+        scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )                            
+    
+    # Move the tmp folder to results if not empty, else just remove the tmp file. 
+    shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
 
 
 def run_motor_primitives( my_sim  ):
@@ -247,7 +279,7 @@ def run_motor_primitives( my_sim  ):
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
 
     # The end-effector position for the final position
-    p0f = p0i + np.array( [ 0.0, 1.0, 0.0 ] )
+    p0f = p0i + np.array( [ 0.0, 1.2, 0.0 ] )
 
     # Define a Task-space controller 1
     ctrl  = CartesianImpedanceController( my_sim, args, name = "task_imp" )
@@ -256,11 +288,11 @@ def run_motor_primitives( my_sim  ):
 
     # Define an impedance controller for obstacle avoidance
     ctrl2 = CartesianImpedanceControllerObstacle( my_sim, args, name = "task_imp2", obs_pos = o   )
-    ctrl2.set_impedance( k = args.k )
-    ctrl2.set_order( n = args.order )
+    ctrl2.set_impedance( k = 0.1 )
+    ctrl2.set_order( n = 6 )
 
-    ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = 5, ti = args.start_time  )    
-    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 30 * np.eye( 3 ) )
+    ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = 3.0, ti = args.start_time  )    
+    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
@@ -277,7 +309,7 @@ if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    ctrl_type = "movement"
+    ctrl_type = "motor"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )
