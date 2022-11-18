@@ -169,7 +169,12 @@ plot( data_raw1.x, data_raw1.y, 'linewidth', 4, 'linestyle', '--', 'color', c.bl
 plot( data_raw1.p( :, 1), data_raw1.p( :, 2  ), 'linewidth', 6, 'color', c.blue )
 plot( data_raw3.x0_arr( : , 1 ), data_raw3.x0_arr( : , 2 ), 'linewidth', 6, 'color', c.orange )
 set( gca, 'xlim', [-.2, 3.2], 'xtick', [ 0, 1.5, 3.0 ], 'ylim', [ 2.5, 3.5], 'ytick', [ 2.5, 3.0, 3.5 ], 'fontsize', 30 )
+text( data_raw3.x0_arr( 1 , 1 ), data_raw3.x0_arr( 1 , 2 )- 0.1, 'Start $\mathbf{p}_i$' )
+text( data_raw3.x0_arr( end , 1 )-0.2, data_raw3.x0_arr( end , 2 )- 0.1, 'Goal $\mathbf{g}$' )
+scatter( data_raw3.x0_arr( end , 1 ), data_raw3.x0_arr( end , 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
+scatter( data_raw3.x0_arr( 1 , 1 ), data_raw3.x0_arr( 1 , 2 ), 300, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
 legend( '', 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 30  )
+
 
 subplot( 2, 2, 3)
 hold on
@@ -278,6 +283,7 @@ xlabel( 'X (m)', 'fontsize', 35 )
 ylabel( 'Y (m)', 'fontsize', 35 )
 text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.1, '$\mathbf{g}_{old}$' );
 text( g_new( 1 ) - 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
+text( data_raw2.p0_arr( 1, 1 ) + 0.1, data_raw2.p0_arr( 1, 2 ), '$\mathbf{p}_{i}$' );
 legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 20  )
 
 set( gca, 'fontsize', 30 )
@@ -377,6 +383,79 @@ legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', '
 mySaveFig( gcf, 'sequence_figure2' )
 
 
+
+%% ==================================================================
+%% (--) Task-space Trajectory Tracking --- Rhythmic
+%% -- (-A) Dynamic Motor Primitives 
+
+file_name = '../results/task_space_traj_track/dynamic_motor/rhythmic.mat';
+data_raw1 = load( file_name );
+
+subplot( 1, 2, 2)
+hold on
+
+centers = data_raw1.centers;
+
+plot( data_raw1.xEE_arr( :, 1 )-centers(1), data_raw1.xEE_arr( :, 2 )- centers(2), 'linewidth', 6, 'color', c.orange )
+plot( data_raw1.x0_arr( :, 1 )-centers(1), data_raw1.x0_arr( :, 2 )- centers(2), 'linewidth', 3, 'linestyle', '--', 'color', 'k')
+ 
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+axis equal
+set( gca, 'xlim', [-0.6, 0.60001], 'ylim', [-0.6, 0.60001], 'fontsize', 30 )
+title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+
+
+file_name = '../results/task_space_traj_track/dynamic_movement/rhythmic.mat';
+data_raw2 = load( file_name );
+
+subplot( 1, 2, 1 )
+hold on
+
+
+plot( data_raw2.y_arr1-centers(1), data_raw2.y_arr2-centers(2), 'linewidth', 6, 'color', c.blue )
+plot( data_raw2.y_des1-centers(1), data_raw2.y_des2-centers(2), 'linewidth', 3, 'linestyle', '--', 'color', 'k')
+ 
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+axis equal
+set( gca, 'xlim', [-0.6, 0.60001], 'ylim', [-0.6, 0.60001], 'fontsize', 30 )
+title( 'Dynamic Movement Primitives', 'fontsize', 30 )
+
+mySaveFig( gcf,  'task_space_rhythmic' )
+
+%% ==================================================================
+%% (--) Discrete and Rhythmic Movements 
+
+% Dynamic Movement Primitives
+% Dynamic Motor Primitives
+file_name1 = '../results/discrete_and_rhythmic/movement/dmp.mat';
+data_raw1 = load( file_name1 );
+subplot( 2, 1, 1 )
+hold on
+plot( data_raw1.t_arr, data_raw1.g, 'linewidth', 2, 'linestyle', '-', 'color', c.black )
+plot( data_raw1.t_arr, data_raw1.g0, 'linewidth', 2, 'linestyle', '-.', 'color', c.black )
+plot( data_raw1.t_arr, data_raw1.q( :, 2 ), 'linewidth', 6, 'color', c.blue )
+title( 'Dynamic Movement Primitives', 'fontsize', 30 )
+ylabel( '$q_{elbow}(t)$', 'fontsize', 30 )
+legend( '$g$', '$g_0$' )
+set( gca, 'xlim', [0, 17.4], 'fontsize', 30  )
+
+% Dynamic Motor Primitives
+file_name2 = '../results/discrete_and_rhythmic/motor/ctrl_joint_imp.mat';
+data_raw2 = load( file_name2 );
+subplot( 2, 1, 2 )
+hold on
+plot( data_raw2.t_arr, data_raw2.q0_tmp_arr( :, 2), 'linewidth', 2, 'color', c.black )
+plot( data_raw2.t_arr, data_raw2.q_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+set( gca, 'xlim', [0, 17.4 ], 'fontsize', 30  )
+xlabel( '$t$', 'fontsize', 30 )
+ylabel( '$q_{elbow}(t)$', 'fontsize', 30 )
+title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+
+mySaveFig( gcf,  'discrete_and_rhythmic' )
+
+
 %% ==================================================================
 %% (--) Obstacle Avoidance 
 %% -- (-A) Dynamic Motor Primitives - Order 
@@ -403,6 +482,8 @@ scatter( 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i(
         , 1000, 'o', 'markerfacecolor', c.grey, 'markeredgecolor', c.black, 'linewidth', 3 )
 set( gca, 'xlim', [-.4, .40001], 'ylim', [ 0.3, 1.8],  'fontsize', 30 )
 text( -0.25 + 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i( 2 ) + data_raw2.x0f( 2 ) ), 'Obstacle' )
+text( data_raw2.x0i( 1 )-0.08, data_raw2.x0i( 2 ), '$\mathbf{p}_i$' )
+text( data_raw2.x0f( 1 )-0.08, data_raw2.x0f( 2 ), '$\mathbf{g}$' )
 % daspect([1 1 1])
 legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
 xlabel( 'X (m)', 'fontsize', 35 )
