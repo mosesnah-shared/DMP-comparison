@@ -112,7 +112,7 @@ class JointImpedanceController( ImpedanceController ):
         self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti", "amps", "omegas", "offsets" )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "ddq" , "ddq0" )
+        self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "ddq" , "ddq0", "q0_tmp" )
 
         # Generate an empty lists names of parameters
         self.init( )
@@ -191,11 +191,14 @@ class JointImpedanceController( ImpedanceController ):
         self.dq0  = np.zeros( self.n_act )
         self.ddq0 = np.zeros( self.n_act )        
 
+        self.q0_tmp   = np.zeros( self.n_act )
 
         if self.n_movs != 0:    
             for i in range( self.n_movs ):
                 for j in range( self.n_act ):
                     tmp_q0, tmp_dq0, tmp_ddq0 = min_jerk_traj( t, self.ti[ i ],  self.q0i[ i ][ j ], self.q0f[ i ][ j ], self.D[ i ] )
+
+                    self.q0_tmp[ j ] += tmp_q0
 
                     self.q0[ j ]   += tmp_q0 
                     self.dq0[ j ]  += tmp_dq0
@@ -422,8 +425,3 @@ class CartesianImpedanceControllerObstacle( ImpedanceController ):
 
         self.init( )
         self.n_movs = 0 
-
-# Dynamic Movement Primitives
-class DMP:
-    def __init__( self, mj_sim, args, name ): 
-        NotImplementedError( )
