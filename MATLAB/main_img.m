@@ -1,4 +1,4 @@
-% [Project]        DMP Comparison
+% [Project]        DMP Comparison - Video Generation
 % [Author]         Moses C. Nah
 % [Creation Date]  Monday, Oct. 23th, 2022
 %
@@ -14,9 +14,11 @@ myFigureConfig( 'fontsize',  20, ...
            'AxesLineWidth', 1.5, ...     For Grid line, axes line width etc.
               'markerSize',  25    )  
              
-global c                                                                   % Setting color structure 'c' as global variable
+global c                                               
 c  = myColor(); 
 
+global mode 
+mode = "MOVEMENT"; % Either movement or motor or both to generate the images 
 
 %% ==================================================================
 %% (--) Goal directed Discrete Movement - Joint Space
@@ -54,6 +56,8 @@ ylabel( 'Joint1, $q_1$', 'fontsize', 30 )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 % yline( 1.0, 'linewidth', 3, 'linestyle', '-.')
 % legend( '$q(t)$', '$q_{des}(t)$', 'location', 'northwest' )
+
+
 subplot( 2, 2, 2 )
 
 plot( data_raw1.t_arr, q0_arr( 1, : ), 'color', c.pink, 'linewidth', 4, 'linestyle', '--' );
@@ -144,7 +148,7 @@ mySaveFig( gcf, 'goal_directed_discrete_task_space' )
 
 
 %% ==================================================================
-%% (--) Goal directed Discrete Movement - With Redundancy
+%% (--) Goal directed Discrete Movement - With Redundancy #1
 
 % Dynamic Movement Primitives
 file_name1 = '../results/discrete_move_task_space_w_redund/movement/dmp.mat';
@@ -165,69 +169,88 @@ data_raw3 = load( file_name3 );
 % plot( t_arr, data_raw1.dq )
 subplot( 2, 2, [1,2])
 hold on
+
+
 plot( data_raw1.x, data_raw1.y, 'linewidth', 4, 'linestyle', '--', 'color', c.black )
-plot( data_raw1.p( :, 1), data_raw1.p( :, 2  ), 'linewidth', 6, 'color', c.blue )
-plot( data_raw3.x0_arr( : , 1 ), data_raw3.x0_arr( : , 2 ), 'linewidth', 6, 'color', c.orange )
+if mode == "MOVEMENT" || mode == "BOTH"
+    plot( data_raw1.p( :, 1), data_raw1.p( :, 2  ), 'linewidth', 6, 'color', c.blue )
+elseif mode == "MOTOR" || mode == "BOTH"
+    plot( data_raw3.x0_arr( : , 1 ), data_raw3.x0_arr( : , 2 ), 'linewidth', 6, 'color', c.orange )
+end
+
 set( gca, 'xlim', [-.2, 3.2], 'xtick', [ 0, 1.5, 3.0 ], 'ylim', [ 2.5, 3.5], 'ytick', [ 2.5, 3.0, 3.5 ], 'fontsize', 30 )
 text( data_raw3.x0_arr( 1 , 1 ), data_raw3.x0_arr( 1 , 2 )- 0.1, 'Start $\mathbf{p}_i$' )
 text( data_raw3.x0_arr( end , 1 )-0.2, data_raw3.x0_arr( end , 2 )- 0.1, 'Goal $\mathbf{g}$' )
 scatter( data_raw3.x0_arr( end , 1 ), data_raw3.x0_arr( end , 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
 scatter( data_raw3.x0_arr( 1 , 1 ), data_raw3.x0_arr( 1 , 2 ), 300, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
-legend( '', 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 30  )
 
-
-subplot( 2, 2, 3)
-hold on
-plot( data_raw1.x, data_raw1.y, 'linewidth', 2, 'linestyle', '--', 'color', c.black )
-
-% Get the x, y position of the joints 
-q_abs = cumsum( data_raw1.q , 2 );
-x_arr = cumsum( cos( q_abs ), 2 );
-y_arr = cumsum( sin( q_abs ), 2 );
-
-alpha_arr = [0.2, 0.5, 1.0];
-idx_arr   = [1000, 2300, 5000];
-for i = 1 : 3
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 )
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
+if mode == "MOVEMENT" 
+    legend( '', 'Dynamic Movement Primitives', 'location', 'northwest', 'fontsize', 30  )
+elseif mode == "MOTOR"
+    legend( '', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 30  )
+else
+    legend( '', 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 30  )
 end
 
-set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
-axis equal
-title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 
-subplot( 2, 2, 4)
-hold on
-plot( data_raw1.x, data_raw1.y, 'linewidth', 2, 'linestyle', '--', 'color', c.black )
+if mode == "MOVEMENT" || mode == "BOTH"
+    subplot( 2, 2, 3)
+    hold on
+    plot( data_raw1.x, data_raw1.y, 'linewidth', 2, 'linestyle', '--', 'color', c.black )
 
-% Get the x, y position of the joints 
-q_abs = cumsum( data_raw2.q_arr , 2 );
-x_arr = cumsum( cos( q_abs ), 2 );
-y_arr = cumsum( sin( q_abs ), 2 );
+    % Get the x, y position of the joints 
+    q_abs = cumsum( data_raw1.q , 2 );
+    x_arr = cumsum( cos( q_abs ), 2 );
+    y_arr = cumsum( sin( q_abs ), 2 );
 
-alpha_arr = [0.2, 0.5, 1.0];
-idx_arr   = [30, 100, 300];
-for i = 1 : 3
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
+    alpha_arr = [0.2, 0.5, 1.0];
+    idx_arr   = [1000, 2300, 5000];
+    for i = 1 : 3
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end
+
+    set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
+    axis equal
+    title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 end
 
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
-set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
-axis equal
+if mode == "MOTOR" || mode == "BOTH"
+    subplot( 2, 2, 4)
+    hold on
+    plot( data_raw1.x, data_raw1.y, 'linewidth', 2, 'linestyle', '--', 'color', c.black )
+
+    % Get the x, y position of the joints 
+    q_abs = cumsum( data_raw2.q_arr , 2 );
+    x_arr = cumsum( cos( q_abs ), 2 );
+    y_arr = cumsum( sin( q_abs ), 2 );
+
+    alpha_arr = [0.2, 0.5, 1.0];
+    idx_arr   = [30, 100, 300];
+    for i = 1 : 3
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end
+
+    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+    set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
+    axis equal
+end
 
 mySaveFig( gcf, 'redundancy_end_effector' )
 
+
+%% (--) Goal directed Discrete Movement - With Redundancy #2
 figure( )
 
 % Plot the qdot and q
@@ -258,8 +281,9 @@ xlabel( '$t$' )
 set( gca, 'fontsize', 30, 'xlim', [1, 5 ], 'ylim', [ -1, 0.5],  'xticklabel', { '0', '1', '2', '3', '4' }  )
 legend( '$q_1$', '$q_2$', '$q_3$', '$q_4$', '$q_5$', 'location', 'southeast')
 mySaveFig( gcf, 'redundancy_joint_trajs' )
+
 %% ==================================================================
-%% (--) Sequence of Discrete Movements
+%% (--) Sequence of Discrete Movements #1
 
 file_name1 = '../results/sequence/movement/dmp.mat';
 file_name2 = '../results/sequence/motor/dmp.mat';
@@ -274,8 +298,11 @@ g_new = g_old + [ 1.5, 0.5, 0. ];
  
 subplot( 2, 2, [1,3] )
 hold on
-plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue)
-plot( data_raw2.p_arr( :, 1 ), data_raw2.p_arr( :, 2 ), 'linewidth', 4, 'color', c.orange  )
+if mode == "MOVEMENT" || mode == "BOTH"
+    plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue)
+elseif mode == "MOTOR" || mode == "BOTH"
+    plot( data_raw2.p_arr( :, 1 ), data_raw2.p_arr( :, 2 ), 'linewidth', 4, 'color', c.orange  )
+end
 scatter( g_old( 1 ), g_old( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.3 )
 scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
 scatter( data_raw2.p0_arr( 1, 1 ), data_raw2.p0_arr( 1, 2 ), 300, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
@@ -284,102 +311,133 @@ ylabel( 'Y (m)', 'fontsize', 35 )
 text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.1, '$\mathbf{g}_{old}$' );
 text( g_new( 1 ) - 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
 text( data_raw2.p0_arr( 1, 1 ) + 0.1, data_raw2.p0_arr( 1, 2 ), '$\mathbf{p}_{i}$' );
-legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 20  )
+
+if mode == "MOVEMENT" 
+    legend( 'Dynamic Movement Primitives', 'location', 'northwest', 'fontsize', 23)
+elseif mode == "MOTOR"
+    legend( 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 23  )
+else
+    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 23  )
+end
+
 
 set( gca, 'fontsize', 30 )
 
-subplot( 2, 2, 2 )
-hold on
+if mode == "MOVEMENT" || mode == "BOTH"
+    subplot( 2, 2, 2 )
+    hold on
 
-% Get the x, y position of the joints 
-q_abs = cumsum( data_raw1.q , 2 );
-x_arr = cumsum( cos( q_abs ), 2 );
-y_arr = cumsum( sin( q_abs ), 2 );
+    % Get the x, y position of the joints 
+    q_abs = cumsum( data_raw1.q , 2 );
+    x_arr = cumsum( cos( q_abs ), 2 );
+    y_arr = cumsum( sin( q_abs ), 2 );
 
-alpha_arr = [0.2, 0.4, 0.8, 1.0];
-idx_arr   = [1000, 1900, 3000, 7000];
-for i = 1 : length( idx_arr )
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 )
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
+    alpha_arr = [0.2, 0.4, 0.8, 1.0];
+    idx_arr   = [1000, 1900, 3000, 7000];
+    for i = 1 : length( idx_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end
+    plot( x_arr( :, 2) , y_arr( :, 2), 'color',c.blue, 'linewidth', 4 ) 
+    scatter( g_old( 1 ), g_old( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.3 )
+    scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
+
+    text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.3, '$\mathbf{g}_{old}$' );
+    text( g_new( 1 ) + 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
+
+    title( 'Dynamic Movement Primitives', 'fontsize', 30 )
+    xlabel( 'X (m)', 'fontsize', 35 )
+    ylabel( 'Y (m)', 'fontsize', 35 )
+    set( gca, 'xticklabel', {}, 'yticklabel', {} ,'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
+    axis equal
 end
-plot( x_arr( :, 2) , y_arr( :, 2), 'color',c.blue, 'linewidth', 4 ) 
-scatter( g_old( 1 ), g_old( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.3 )
-scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
 
-text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.3, '$\mathbf{g}_{old}$' );
-text( g_new( 1 ) + 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
+if mode == "MOTOR" || mode == "BOTH"
+    subplot( 2, 2, 4 )
+    hold on
+    q_abs = cumsum( data_raw2.q_arr , 2 );
+    x_arr2 = cumsum( cos( q_abs ), 2 );
+    y_arr2 = cumsum( sin( q_abs ), 2 );
 
-title( 'Dynamic Movement Primitives', 'fontsize', 30 )
-xlabel( 'X (m)', 'fontsize', 35 )
-ylabel( 'Y (m)', 'fontsize', 35 )
-set( gca, 'xticklabel', {}, 'yticklabel', {} ,'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
-axis equal
+    alpha_arr = [0.2, 0.4, 0.8, 1.0];
+    idx_arr   = [1000, 1800, 2000, 5000];
+    for i = 1 : length( idx_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr2( idx, 1:end-1 ) ] , [ 0, y_arr2( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr2( idx, : ) ] , [ 0, y_arr2( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr2( idx, end ), y_arr2( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
 
-subplot( 2, 2, 4 )
-hold on
-q_abs = cumsum( data_raw2.q_arr , 2 );
-x_arr2 = cumsum( cos( q_abs ), 2 );
-y_arr2 = cumsum( sin( q_abs ), 2 );
+    end
+    plot( x_arr2( :, 2) , y_arr2( :, 2), 'color',c.orange, 'linewidth', 4 ) 
+    scatter( g_old( 1 ), g_old( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.3 )
+    scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
 
-alpha_arr = [0.2, 0.4, 0.8, 1.0];
-idx_arr   = [1000, 1800, 2000, 5000];
-for i = 1 : length( idx_arr )
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr2( idx, 1:end-1 ) ] , [ 0, y_arr2( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr2( idx, : ) ] , [ 0, y_arr2( idx, :) ], 'color', c.black, 'linewidth', 4 )
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr2( idx, end ), y_arr2( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
+    text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.3, '$\mathbf{g}_{old}$' );
+    text( g_new( 1 ) + 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
+
+    set( gca, 'xticklabel', {}, 'yticklabel', {},'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
+    axis equal
+    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+    xlabel( 'X (m)', 'fontsize', 35 )
+    ylabel( 'Y (m)', 'fontsize', 35 )
 end
-plot( x_arr2( :, 2) , y_arr2( :, 2), 'color',c.orange, 'linewidth', 4 ) 
-scatter( g_old( 1 ), g_old( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.3 )
-scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 0.8 )
-
-text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.3, '$\mathbf{g}_{old}$' );
-text( g_new( 1 ) + 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
-
-set( gca, 'xticklabel', {}, 'yticklabel', {},'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
-axis equal
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
-xlabel( 'X (m)', 'fontsize', 35 )
-ylabel( 'Y (m)', 'fontsize', 35 )
 
 mySaveFig( gcf, 'sequence_figure1' )
 
-
+%% (--) Sequence of Discrete Movements #2
 figure( )
 subplot( 2, 1, 1 )
 hold on
 % xlabel( '$t$', 'fontsize', 35 )
 ylabel( '$p_x(t)$', 'fontsize', 35 )
-plot( data_raw1.t_arr- 1, data_raw1.p( 1, : ), 'linewidth', 4, 'color', c.blue )
-plot( data_raw2.t_arr -1, data_raw2.p_arr( :, 1 ), 'linewidth', 4, 'color', c.orange )
+
+if mode == "MOVEMENT" || mode == "BOTH"
+    plot( data_raw1.t_arr- 1, data_raw1.p( 1, : ), 'linewidth', 4, 'color', c.blue )
+elseif mode == "MOTOR" || mode == "BOTH"
+    plot( data_raw2.t_arr -1, data_raw2.p_arr( :, 1 ), 'linewidth', 4, 'color', c.orange )
+end    
 xline( 0.5, 'linewidth', 2, 'linestyle', '-.' )
 yline( g_new( 1 ), 'linewidth', 2, 'linestyle', '-.' )
 set( gca, 'fontsize', 30, 'xlim', [0, 4], 'xtick', [ 0, 0.5, 1, 2, 3, 4 ], 'xticklabel', { '0', '$\mathbf{g}_{new}$ Appear', '', 2, '', 4}, ...
                                   'ytick', [ -0.5, 0.0, 0.5, g_new(1), 1.0 ], 'yticklabel', { '-0.5', '0.0', '0.5', '$g_{new,x}$', '' } )
-legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30  )
+                              
 
+if mode == "MOVEMENT" 
+    legend( 'Dynamic Movement Primitives', 'location', 'southeast', 'fontsize', 30)
+elseif mode == "MOTOR"
+    legend( 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30  )
+else
+    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30 )
+end
 
 subplot( 2, 1, 2 )
 hold on
 xlabel( '$t$', 'fontsize', 35 )
 ylabel( '$p_y(t)$', 'fontsize', 35 )
-plot( data_raw1.t_arr - 1, data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
-plot( data_raw2.t_arr - 1, data_raw2.p_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+if mode == "MOVEMENT" || mode == "BOTH"
+    plot( data_raw1.t_arr - 1, data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
+elseif mode == "MOTOR" || mode == "BOTH"    
+    plot( data_raw2.t_arr - 1, data_raw2.p_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+end    
 xline( 0.5, 'linewidth', 2, 'linestyle', '-.' )
 yline( g_new( 2 ), 'linewidth', 2, 'linestyle', '-.' )
 set( gca, 'fontsize', 30, 'xlim', [0, 4], 'xtick', [ 0, 0.5, 1, 2, 3, 4 ], 'xticklabel', { '0', '$\mathbf{g}_{new}$ Appear', '', 2, '', 4}, ...
                                           'ytick', [ 0.5, 1.0, 1.5, g_new(2), 2.0 ], 'yticklabel', { '0.5', '1.0', '1.5', '$g_{new,y}$', '' })
 
-legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30  )
-
+if mode == "MOVEMENT" 
+    legend( 'Dynamic Movement Primitives', 'location', 'southeast', 'fontsize', 30)
+elseif mode == "MOTOR"
+    legend( 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30 )
+else
+    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize',30 )
+end
 mySaveFig( gcf, 'sequence_figure2' )
 
 
@@ -473,8 +531,11 @@ data_raw3 = load( file_name3 );
 
 subplot( 2, 2, [1,3] )
 hold on
-plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
-plot( data_raw2.xEE_arr( :, 1 ), data_raw2.xEE_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+if mode == "MOVEMENT" || mode == "BOTH"
+    plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
+elseif mode == "MOTOR" || mode == "BOTH"    
+    plot( data_raw2.xEE_arr( :, 1 ), data_raw2.xEE_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+end
 plot( data_raw2.x0_arr( :, 1), data_raw2.x0_arr( :, 2),   'linewidth', 4, 'linestyle', '-.', 'color', c.black )
 scatter( data_raw2.x0i( 1 ), data_raw2.x0i( 2 ), 200, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
 scatter( data_raw2.x0f( 1 ), data_raw2.x0f( 2 ), 200, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
@@ -485,72 +546,81 @@ text( -0.25 + 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2
 text( data_raw2.x0i( 1 )-0.08, data_raw2.x0i( 2 ), '$\mathbf{p}_i$' )
 text( data_raw2.x0f( 1 )-0.08, data_raw2.x0f( 2 ), '$\mathbf{g}$' )
 % daspect([1 1 1])
-legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
+if mode == "MOVEMENT"
+    legend( 'Dynamic Movement Primitives', 'fontsize', 30 , 'location', 'southwest' )
+elseif mode == "MOTOR"
+    legend( 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
+else
+    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
+end    
 xlabel( 'X (m)', 'fontsize', 35 )
 ylabel( 'Y (m)', 'fontsize', 35 )
 
-subplot( 2, 2, 2)
-hold on
-plot( data_raw2.x0_arr( :, 1), data_raw2.x0_arr( :, 2),   'linewidth', 2, 'linestyle', '-.', 'color', c.black )
-scatter( 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i( 2 ) + data_raw2.x0f( 2 ) ) ...
-        , 1000, 'o', 'markerfacecolor', c.grey, 'markeredgecolor', c.black, 'linewidth', 3 )
-set( gca, 'xlim', [-.4, .40001], 'ylim', [ 0.3, 1.8],  'fontsize', 30 )
-% Get the x, y position of the joints 
-q_abs = cumsum( data_raw1.q , 2 );
-x_arr = cumsum( cos( q_abs ), 2 );
-y_arr = cumsum( sin( q_abs ), 2 );
 
-alpha_arr = [0.2, 0.4, 0.8, 1.0];
-idx_arr   = [100, 1400, 2000, 3000];
-for i = 1 : length( alpha_arr )
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 )
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
-end
+if mode == "MOVEMENT" || mode == "BOTH" 
+    subplot( 2, 2, 2)
+    hold on
+    plot( data_raw2.x0_arr( :, 1), data_raw2.x0_arr( :, 2),   'linewidth', 2, 'linestyle', '-.', 'color', c.black )
+    scatter( 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i( 2 ) + data_raw2.x0f( 2 ) ) ...
+            , 1000, 'o', 'markerfacecolor', c.grey, 'markeredgecolor', c.black, 'linewidth', 3 )
+    set( gca, 'xlim', [-.4, .40001], 'ylim', [ 0.3, 1.8],  'fontsize', 30 )
+    % Get the x, y position of the joints 
+    q_abs = cumsum( data_raw1.q , 2 );
+    x_arr = cumsum( cos( q_abs ), 2 );
+    y_arr = cumsum( sin( q_abs ), 2 );
 
-plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
+    alpha_arr = [0.2, 0.4, 0.8, 1.0];
+    idx_arr   = [100, 1400, 2000, 3000];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 )
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
 
+    end
 
-set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
-axis equal
-title( 'Dynamic Movement Primitives', 'fontsize', 30 )
-set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-axis equal
+    plot( data_raw1.p( 1, : ), data_raw1.p( 2, : ), 'linewidth', 4, 'color', c.blue )
 
 
-subplot( 2, 2, 4)
-hold on
-plot( data_raw2.x0_arr( :, 1), data_raw2.x0_arr( :, 2),   'linewidth', 2, 'linestyle', '-.', 'color', c.black )
-scatter( 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i( 2 ) + data_raw2.x0f( 2 ) ) ...
-        , 1000, 'o', 'markerfacecolor', c.grey, 'markeredgecolor', c.black, 'linewidth', 3 )
-set( gca, 'xlim', [-.4, .40001], 'ylim', [ 0.3, 1.8],  'fontsize', 30 )
+    set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
+    axis equal
+    title( 'Dynamic Movement Primitives', 'fontsize', 30 )
+    set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    axis equal
 
-% Get the x, y position of the joints 
-q_abs = cumsum( data_raw2.q_arr , 2 );
-x_arr = cumsum( cos( q_abs ), 2 );
-y_arr = cumsum( sin( q_abs ), 2 );
+elseif mode == "MOTOR" || mode == "BOTH" 
+    subplot( 2, 2, 4)
+    hold on
+    plot( data_raw2.x0_arr( :, 1), data_raw2.x0_arr( :, 2),   'linewidth', 2, 'linestyle', '-.', 'color', c.black )
+    scatter( 0.5 *( data_raw2.x0i( 1 ) + data_raw2.x0f( 1 ) ), 0.5 *( data_raw2.x0i( 2 ) + data_raw2.x0f( 2 ) ) ...
+            , 1000, 'o', 'markerfacecolor', c.grey, 'markeredgecolor', c.black, 'linewidth', 3 )
+    set( gca, 'xlim', [-.4, .40001], 'ylim', [ 0.3, 1.8],  'fontsize', 30 )
 
-alpha_arr = [0.2, 0.4, 0.8, 1.0];
-idx_arr   = [100, 1700, 2300, 5000];
-for i = 1 : length( alpha_arr )
-    idx = idx_arr( i );
-    alpha = alpha_arr( i );
-    scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
-    p2.Color( 4 ) = alpha;
-    scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-    
-end
-plot( data_raw2.xEE_arr( :, 1 ), data_raw2.xEE_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
+    % Get the x, y position of the joints 
+    q_abs = cumsum( data_raw2.q_arr , 2 );
+    x_arr = cumsum( cos( q_abs ), 2 );
+    y_arr = cumsum( sin( q_abs ), 2 );
+
+    alpha_arr = [0.2, 0.4, 0.8, 1.0];
+    idx_arr   = [100, 1700, 2300, 5000];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end
+    plot( data_raw2.xEE_arr( :, 1 ), data_raw2.xEE_arr( :, 2 ), 'linewidth', 4, 'color', c.orange )
 
 
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
-set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-axis equal
+    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+    set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    axis equal
+end    
 
 mySaveFig( gcf, 'obstacle' )
 
