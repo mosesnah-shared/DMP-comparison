@@ -8,13 +8,16 @@
 
 clear; close all; clc; workspace;
 
+% Add the Libraries of 
+addpath( 'MATLAB_Library/myUtils', 'MATLAB_Library/myGraphics' )
+
 cd( fileparts( matlab.desktop.editor.getActiveFilename ) );     
 myFigureConfig( 'fontsize',  20, ...
                'LineWidth',  10, ...
            'AxesLineWidth', 1.5, ...     For Grid line, axes line width etc.
               'markerSize',  25    )  
              
-global c                                               
+global c                                                                   % Setting color structure 'c' as global variable
 c  = myColor(); 
 
 global mode 
