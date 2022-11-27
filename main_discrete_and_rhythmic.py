@@ -69,7 +69,7 @@ def run_motor_primitives( my_sim ):
     ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ n:2*n ] - mov_arrs[ :n ], D = mov_arrs[ -1 ], ti = 3 * toff )        
     ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ :n ] - mov_arrs[ n:2*n ], D = mov_arrs[ -1 ], ti = 4 * toff )        
     ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ n:2*n ] - mov_arrs[ :n ], D = mov_arrs[ -1 ], ti = 5 * toff )        
-    ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ :n ] - mov_arrs[ n:2*n ], D = mov_arrs[ -1 ], ti = 6 * toff )        
+    ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ :n ] - mov_arrs[ n:2*n ], D = mov_arrs[ -1 ], ti = 6 * toff )           
     ctrl.add_mov_pars( q0i = np.zeros( n ), q0f = mov_arrs[ n:2*n ] - mov_arrs[ :n ], D = mov_arrs[ -1 ], ti = 7 * toff )        
 
     # Add rhythmic movements too
