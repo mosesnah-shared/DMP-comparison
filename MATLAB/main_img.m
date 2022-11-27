@@ -143,7 +143,7 @@ end
 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 axis equal
 set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001] )
 
