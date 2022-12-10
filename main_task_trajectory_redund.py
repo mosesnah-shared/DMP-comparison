@@ -133,32 +133,32 @@ def getdJ( qpos, qvel ):
 
 def run_motor_primitives( my_sim ):
 
-    # Define the controller 
+    # Define the impedances
     ctrl1 = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl1.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
-
-    # Define the controller 
     ctrl2 = JointImpedanceController( my_sim, args, name = "joint_imp" )
-    # The joint stiffness and damping matrices
-    n = my_sim.n_act
-    ctrl2.set_impedance( Kq = 0 * np.eye( n ), Bq = 30 * np.eye( n ) )
-    
+
+    # The values of the impedances 
+    ctrl1.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl2.set_impedance( Kq =   0 * np.eye( n ), Bq =  30 * np.eye( n ) )
+
     my_sim.add_ctrl( ctrl1 )
     my_sim.add_ctrl( ctrl2 )
 
-    # Set the initial posture of the robot
+    # The number of actuators
+    n = my_sim.n_act
+    
+    # Set the initial posture of the high-DOF robot
     q1      = 0
     ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
     init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
-    # Get the initial position of the robot 
+    # Get the initial/final end-effector position of the robot 
     p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
-    
-    # Define the final posture 
     p0f = p0i + np.array( [ 3.0, 0, 0 ] )
 
-    # Superposition of mechanical impedances
+    # Adding the reference trajectories
+    # For the joint impedances, the reference posture remains stationary.
     ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 2, ti = args.start_time  )    
     ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
 

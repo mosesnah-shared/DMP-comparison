@@ -1,5 +1,7 @@
 import math
-import numpy as np
+import scipy.io
+
+import numpy             as np
 import matplotlib.pyplot as plt
 
 from CanonicalSystem import CanonicalSystem 
@@ -12,11 +14,14 @@ class DynamicMovementPrimitives:
         Both the Transformation System and Nonlinear Forcing Term is Derived Here
     """
 
-    def __init__( self, mov_type:str, cs, n_bfs = 50, alpha_z = 24.0, beta_z = 6.0, tau = 1.0 ):
+    def __init__( self, name: str, mov_type:str, cs, n_bfs = 50, alpha_z = 24.0, beta_z = 6.0 ):
 
         # Define the Transformation System 
         # Equation 2.1 of REF
         # [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
+
+        # Name of this DMP
+        self.name = name
 
         # Assert that mov_type is either discrete or rhythmic
         assert mov_type in [ "discrete", "rhythmic" ]
@@ -26,13 +31,15 @@ class DynamicMovementPrimitives:
         # Hence, setting the default values of alpha_z, beta_z as 24.0, 6.0, respectively.
         self.alpha_z = alpha_z
         self.beta_z  = beta_z
-        self.tau     = tau 
 
         # The canonical system of the Dynamic Movement Primitives
         # The canonical system MUST be defined for the Dynamic Movement Primitives
         # cs should NOT be empty
         assert cs is not None 
         self.cs = cs
+
+        # Tau of the canonical system and the DMP should match
+        self.tau = self.cs.tau 
 
         # The basis functions for the nonlinear forcing term
         self.basis_functions = BasisFunctions( mov_type = mov_type, n_bfs = n_bfs, cs = cs )
@@ -56,17 +63,17 @@ class DynamicMovementPrimitives:
 
         return y_new, z_new, dy, dz
 
-    def imitation_learning( self, t_arr, y_des, dy_des, ddy_des ):
+    def imitation_learning( self, t_des, y_des, dy_des, ddy_des ):
         """
             Learning the weights, center position and height of the basis functions
         """
 
         # Assert a 1D array and same length
-        assert t_arr.ndim == 1 and y_des.ndim == 1 and dy_des.ndim == 1 and ddy_des.ndim == 1
-        assert len( t_arr ) == len( y_des ) and len( t_arr ) == len( dy_des ) and len( t_arr ) == len( ddy_des )
+        assert t_des.ndim == 1 and y_des.ndim == 1 and dy_des.ndim == 1 and ddy_des.ndim == 1
+        assert len( t_des ) == len( y_des ) and len( t_des ) == len( dy_des ) and len( t_des ) == len( ddy_des )
 
         # Save the desired trajectory and the number of basis function s
-        self.t_arr   =   t_arr
+        self.t_des   =   t_des
         self.y_des   =   y_des
         self.dy_des  =  dy_des
         self.ddy_des = ddy_des
@@ -82,10 +89,10 @@ class DynamicMovementPrimitives:
 
         # The xi array of Eq. 2.14 of [REF]
         # [REF] IBID
-        s_arr = self.cs.get_value( self.t_arr ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones_like( self.t_arr )
+        s_arr = self.cs.get_value( self.t_des ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones_like( self.t_arr )
             
         for i in range( self.basis_functions.n_bfs ):
-            gamma = self.basis_functions.calc_ith_activation( i, self.cs.get_value( self.t_arr ) ) 
+            gamma = self.basis_functions.calc_ith_activation( i, self.cs.get_value( self.t_des ) ) 
 
             # In case if denominator zero, then set value as zero
             self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr ) if np.sum( s_arr * gamma * s_arr ) != 0 else 0
@@ -97,21 +104,21 @@ class DynamicMovementPrimitives:
 
             Time step is dt, number of time step is N
         """
-        y_arr  = np.zeros( N )
-        z_arr  = np.zeros( N )
-        dy_arr = np.zeros( N )        
-        dz_arr = np.zeros( N )
+        self.y_arr  = np.zeros( N )
+        self.z_arr  = np.zeros( N )
+        self.dy_arr = np.zeros( N )        
+        self.dz_arr = np.zeros( N )
 
         # The initial value 
-        y_arr[ 0 ] = y0
-        z_arr[ 0 ] = z0
+        self.y_arr[ 0 ] = y0
+        self.z_arr[ 0 ] = z0
 
-        t_arr = dt * np.arange( N )
+        self.t_arr = dt * np.arange( N )
 
         for i in range( N - 1 ):
 
             # Get the current time of the time_arr
-            t = t_arr[ i ]
+            t = self.t_arr[ i ]
 
             # Get the current canonical function value
             s = self.cs.get_value( t )
@@ -120,13 +127,30 @@ class DynamicMovementPrimitives:
             # If discrete movement, multiply (g-y0) and s on the value 
             f *= s * ( g - y0 ) if self.mov_type == "discrete" else 1
 
-            y_arr[ i + 1 ], z_arr[ i + 1 ], dy_arr[ i ], dz_arr[ i ] = self.step( g, y_arr[ i ], z_arr[ i ] ,f, dt )
+            self.y_arr[ i + 1 ], self.z_arr[ i + 1 ], self.dy_arr[ i ], self.dz_arr[ i ] = self.step( g, self.y_arr[ i ], self.z_arr[ i ] ,f, dt )
 
         # Copy the final elements
-        dy_arr[ -1 ] = dy_arr[ -2 ]
-        dz_arr[ -1 ] = dz_arr[ -2 ]
+        self.dy_arr[ -1 ] = self.dy_arr[ -2 ]
+        self.dz_arr[ -1 ] = self.dz_arr[ -2 ]
 
-        return t_arr, y_arr, z_arr, dy_arr, dz_arr
+        return np.copy( self.t_arr ), np.copy( self.y_arr ), np.copy( self.z_arr ), np.copy( self.dy_arr ), np.copy( self.dz_arr )
+
+    def save_mat_data( self, dir2save ):
+        """
+            Basic code for saving the data of this dmp
+            This saves the data in .mat form 
+        """
+
+        dict  = { "mov_type" : self.mov_type,  "weights": self.weights, "alpha_z": self.alpha_z,  "beta_z": self.beta_z, 
+                   "t_des": self.t_des, "y_des": self.y_des, "dy_des": self.dy_des, "ddy_des": self.ddy_des,
+                    "centers": self.basis_functions.centers, "heights": self.basis_functions.heights,
+                  "t_arr": self.t_arr, "y_arr": self.y_arr, "z_arr": self.z_arr, 
+                  "dy_arr": self.dy_arr, "dz_arr": self.dz_arr, 
+                  "tau": self.cs.tau, "alpha_s": self.cs.alpha_s }
+
+        scipy.io.savemat( dir2save + "/" + self.name + ".mat", { **dict } )    
+
+
 
 
 if __name__ == "__main__":
