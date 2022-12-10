@@ -137,7 +137,6 @@ def quat2rot( quat: np.ndarray ):
     return R
 
 
-
 def min_jerk_traj( t: float, ti: float,  pi: float, pf: float, D: float ):
     """
         Returning the 1D position and velocity data at time t of the minimum-jerk-trajectory ( current time )

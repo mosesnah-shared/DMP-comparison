@@ -46,6 +46,7 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
+from InverseDynamicsModel       import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -70,13 +71,13 @@ def run_movement_primitives( my_sim ):
     # Define for x and y trajectory
     dmp_list = [] 
 
-    for _ in range( 2 ):
+    # The number of basis functions
+    N = 30
 
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", alpha_z = 10, beta_z = 2.5 )
+    for _ in range( 2 ):
+        dmp = DynamicMovementPrimitives( mov_type = "discrete",cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0  )
         dmp_list.append( dmp )
         
-        # Adding the canonical system
-        dmp.add_canonical_system( cs )      
 
     # The parameters of min-jerk-traj
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
@@ -85,7 +86,7 @@ def run_movement_primitives( my_sim ):
     # Obstacle Location
     o = np.array( [ 0, 0.5 * (p0i[ 1 ] + p0f[ 1 ]), 0 ] )
 
-    g   = np.copy( p0f )
+    g  = np.copy( p0f )
     D1 = 3.0
 
     # The time constant tau is the duration of the movement. 
@@ -108,21 +109,20 @@ def run_movement_primitives( my_sim ):
             t = tmp_dt * j
             p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D1  )
 
-    # The number of basis functions
-    N = 20
 
     # Learn the weights
     for i in range( 2 ):
         t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
-        dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ], n_bfs = N )
+        dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
 
 
     # Now, we integrate this solution
     # For this, the initial and final time of the simulation is important
-    N_sim = round( args.run_time/dt  )
-    p_command  = np.zeros( ( 2, N_sim + 1 ) )
-    dp_command = np.zeros( ( 2, N_sim + 1 ) )
+    N_sim = round( args.run_time/dt  ) + 1
+    p_command   = np.zeros( ( 2, N_sim ) )
+    dp_command  = np.zeros( ( 2, N_sim ) )
+    ddp_command = np.zeros( ( 2, N_sim ) )
 
     tmp_p  = np.array( [ p0i[ 0 ], p0i[ 1 ], 0 ] )
     tmp_dp = np.zeros( 3 )
@@ -130,7 +130,7 @@ def run_movement_primitives( my_sim ):
     y_curr = tmp_p 
     z_curr = tmp_dp 
 
-    for i in range( N_sim + 1 ):
+    for i in range( N_sim ):
 
         # Calculate the coupling term 
         # Need to know the current p and dp 
@@ -160,24 +160,14 @@ def run_movement_primitives( my_sim ):
                 # Get the current canonical function value
                 s = cs.get_value( t - args.start_time )
 
-                psi_arr = np.array( [ dmp.basis_functions.calc_activation( k, s ) for k in np.arange( dmp.basis_functions.n_bfs ) ] )
-
-                # if psi_arr is super small, then just set for as zero since this implies there is no activation
-                if np.sum( psi_arr ) != 0:
-                    f = np.sum( dmp.weights * psi_arr ) / np.sum( psi_arr )
-                else:
-                    f = 0
-
-                # In case if f is nan, then just set f as 0 
-                if math.isnan( f ): f = 0 
-
+                f = dmp.basis_functions.calc_nonlinear_forcing_term( s, dmp.weights )
                 f *= s * ( p0f[ j ] - p0i[ j ] ) 
                 f += Cp[ j ]
 
-                y_new, z_new, _ ,_ = dmp.step( g[ j ], y_curr[ j ], z_curr[ j ], f, dt )
-                p_command[ j, i ]  = y_new
-                dp_command[ j, i ] = z_new / cs.tau
-
+                y_new, z_new, dy, dz = dmp.step( g[ j ], y_curr[ j  ], z_curr[ j ], f, dt )
+                p_command[ j, i ]   = y_new
+                dp_command[ j, i ]  = dy 
+                ddp_command[ j, i ] = dz 
                 y_curr[ j ] = y_new
                 z_curr[ j ] = z_new 
             
@@ -232,10 +222,25 @@ def run_movement_primitives( my_sim ):
         q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
         q1 = np.arctan2( py, px ) - q2/2 
 
-        t_arr.append( t )
-        q_arr.append( np.array( [ q1, q2 ] ) )
+        # The q_arr 
+        q_arr = np.array( [ q1, q2 ] )
 
-        my_sim.mj_data.qpos[ : ] = np.array( [ q1, q2 ] )
+        # The dq_arr
+        dq_arr  = np.linalg.inv( get2DOF_J( q_arr ) ) @ dp_command[ :, n_steps ]
+
+        # The ddq_arr
+        ddq_arr = np.linalg.inv( get2DOF_J( q_arr ) ) @ ( ddp_command[ :, n_steps ] - get2DOF_dJ( q_arr, dq_arr  ) @ dq_arr )
+
+        # Calculate the mass, coriolis matrix
+        tau = get2DOF_M( q_arr  ) @ ddq_arr + get2DOF_C( q_arr, dq_arr ) @ dq_arr
+
+        my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
+
+
+        my_sim.step( )
+        n_steps += 1
+        t += dt
+
 
         my_sim.step( )
         n_steps += 1
@@ -309,7 +314,7 @@ if __name__ == "__main__":
 
     # Generate an instance of our Simulation
     # The model is generated since the model name is passed via arguments
-    ctrl_type = "motor"
+    ctrl_type = "movement"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )

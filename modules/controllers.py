@@ -2,6 +2,7 @@ import numpy    as np
 import scipy.io
 from   modules.utils     import min_jerk_traj
 
+
 class Controller:
     """
         Description:

@@ -86,7 +86,9 @@ class DynamicMovementPrimitives:
             
         for i in range( self.basis_functions.n_bfs ):
             gamma = self.basis_functions.calc_ith_activation( i, self.cs.get_value( self.t_arr ) ) 
-            self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr )            
+
+            # In case if denominator zero, then set value as zero
+            self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr ) if np.sum( s_arr * gamma * s_arr ) != 0 else 0
 
 
     def integrate( self, y0, z0, g, dt, N ):
@@ -141,8 +143,10 @@ if __name__ == "__main__":
     dmp = DynamicMovementPrimitives( mov_type = mov_type, cs = cs, n_bfs = n_bfs, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
 
     # Train the movement as minimum jerk trajectory 
-    P = 100 
-    t_arr = 0.01 * np.arange( P )
+    P  = 100
+    dt = 1.0/P
+
+    t_arr = dt * np.arange( P )
     pi = 0.
     pf = 1.
     D  = 1.
