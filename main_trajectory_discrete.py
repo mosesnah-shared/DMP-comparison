@@ -12,7 +12,6 @@
 
 import os
 import sys
-import math
 import shutil
 import scipy.io
 
@@ -20,13 +19,8 @@ import numpy           as np
 import moviepy.editor  as mpy
 
 from matplotlib  import pyplot as plt
-# ======================================================================== #
-# ======================================================================== #
-#                                                                          #
-#                            ADDING LOCAL MODULES                          #
-#                                                                          #
-# ======================================================================== #
-# ======================================================================== #
+
+# Adding local modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
@@ -35,26 +29,17 @@ from utils        import min_jerk_traj
 from constants    import my_parser
 from constants    import Constants as C
 
-from mujoco_py    import functions as mj_functions
-
-
-# ======================================================================== #
-# ======================================================================== #
-#
-#               ADDING MODULES FOR DYNAMIC MOVEMENT PRIMITIVES             #
-#
-# ======================================================================== #
-# ======================================================================== #
+# The DMP Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
-from InverseDynamicsModel       import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ
+from InverseDynamicsModel       import get2DOF_M, get2DOF_C
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
 
-
+# Dynamic Motor Primitives
 def run_motor_primitives( my_sim ):
 
     # Define the joint-space impedance controller 
@@ -66,15 +51,15 @@ def run_motor_primitives( my_sim ):
     # The joint stiffness and damping matrices
     ctrl.set_impedance( Kq = 50 * np.eye( nq ), Bq = 40 * np.eye( nq ) )
 
-    # The parameters of min-jerk-traj
+    # The parameters of min-jerk-traj, Initial joint posture, final joint posture, and duration.
     q0i = np.zeros( nq )
     q0f =  np.ones( nq )
     D   = 2.0
 
-    # Use minimum-jerk trajectory as the refernce trajectory 
+    # Use minimum-jerk trajectory as the reference trajectory 
     ctrl.add_mov_pars( q0i = q0i , q0f = q0f, D = D, ti = args.start_time  )    
 
-    # Add the controller and objective of the simulation
+    # Add the controller of the simulation
     my_sim.add_ctrl( ctrl )
 
     # The initial condition of the robot and its setup
@@ -99,14 +84,15 @@ def run_movement_primitives( my_sim ):
     # The time step of the simulation 
     dt = my_sim.dt
 
-    # Dynamic Movement Primitives 
+    # Dynamic Movement Primitives (DMP)
     dmp_list = [] 
 
-    # The number of basis functions
-    N = 10
+    # The number of basis functions for the imitation learning
+    N = 20
 
-    for _ in range( nq ): 
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
+    # Iterating over the number of joints to each attach DMP
+    for i in range( nq ): 
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp_joint" + str( i ), cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
         dmp_list.append( dmp )
 
     # The parameters of min-jerk-traj
@@ -122,6 +108,7 @@ def run_movement_primitives( my_sim ):
 
     # The time step of imitation learning
     # This is simply defined by D/P
+    # Adding tmp for the dt
     tmp_dt = D/P
 
     # The P samples points of q_des, dq_des, ddq_des
@@ -134,14 +121,13 @@ def run_movement_primitives( my_sim ):
             t = tmp_dt * j
             q_des[ i, j ], dq_des[ i, j ], ddq_des[ i, j ] = min_jerk_traj( t, 0.0, q0i[ i ], q0f[ i ], D  )
 
-    # First, learn the weights via imitation learning 
-    for i in range( nq ):
+        # Once the trajectory is defined, conduct imitation learning.
         t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
         dmp.imitation_learning( t_arr, q_des[ i, : ], dq_des[ i, : ], ddq_des[ i, : ] )
 
-    # Now, we integrate this solution
-    # For this, the initial and final time of the simulation is important
+    # Now, we integrate the simulation via the learned weights
+    # For this, the initial and final time of the simulation is important.
     N_sim = round( args.run_time/dt ) + 1
 
     # The q, dq, ddq of the robot 
@@ -161,17 +147,27 @@ def run_movement_primitives( my_sim ):
         dq_command[  i, : ] =  dy_arr
         ddq_command[ i, : ] =  dz_arr 
 
-    # Since we now know the q_command, looping through the simulation 
-    # We assume pure position control 
+    # Since we now know the q_commands, looping through the simulation 
     # Defining the parameters of the simulation
-    t = 0.
+    t = 0.      
     T = args.run_time 
 
     n_steps = 0
+
+    # For recording the video 
     frames = [ ]
     my_sim.init( qpos = q0i, qvel = np.zeros( nq ) )
     
     if args.cam_pos is not None: my_sim.set_camera_pos( ) 
+
+    # Saving the data if on
+    if args.is_save_data:
+        q_arr   = [ ]
+        dq_arr  = [ ]
+        ddq_arr = [ ]
+        tau_arr = [ ]
+        t_sim_arr = [ ]
+
 
     # Main-loop of the simulation
     while t <= T + 1e-7:
@@ -193,31 +189,55 @@ def run_movement_primitives( my_sim ):
                 frames.append( rgb_img )  
 
             # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset:
-                my_sim.mj_viewer.is_reset = False
+            if my_sim.mj_viewer.is_reset: my_sim.mj_viewer.is_reset = False
             
             # If SPACE BUTTON is pressed
-            if my_sim.mj_viewer.is_paused:    continue
+            if my_sim.mj_viewer.is_paused: continue
 
-        # Calculate the mass, coriolis matrix
+        # The inverse dynamics model
+        # tau = M(q) ddq + C(q, dq)dq 
         tau = get2DOF_M( q_command[ :, n_steps ]  ) @ ddq_command[ :, n_steps ] + \
               get2DOF_C( q_command[ :, n_steps ], dq_command[ :, n_steps ] ) @ dq_command[ :, n_steps ]
 
+        # Assign the torque 
         my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
+
+        if args.is_save_data:
+            t_sim_arr.append( t )
+            q_arr.append(   np.copy( my_sim.mj_data.qpos[ : ] ) )
+            dq_arr.append(  np.copy( my_sim.mj_data.qvel[ : ] ) )
+            ddq_arr.append( np.copy( my_sim.mj_data.qacc[ : ] ) )
+            tau_arr.append( tau )
 
         my_sim.step( )
         n_steps += 1
         t += dt
     
-
     # If video should be recorded, write the video file. 
-    if args.is_record_vid and frames is not None:
+    if args.is_record_vid:
         clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
         clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
 
     # If video recorded/save data is true, then copy the model, main file and the arguments passed
     if args.is_record_vid or args.is_save_data:
         shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )        
+
+    # Saving the data for analysis
+    if args.is_save_data:
+        
+        # Packing up the arrays as a dictionary
+        # DMP for the first joint
+        for i in range( nq ):
+            dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
+
+        # Saving the simulation data
+        dict  = { "t_sim_arr": t_sim_arr, "q_arr": q_arr, "dq_arr": dq_arr, "ddq_arr": ddq_arr, "tau_arr": tau_arr }
+
+        scipy.io.savemat( my_sim.tmp_dir + "/dmp_sim.mat", { **dict } )    
+
+    # Move the tmp folder to results if not empty, else just remove the tmp file. 
+    shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+
 
 if __name__ == "__main__":
                                                                                 

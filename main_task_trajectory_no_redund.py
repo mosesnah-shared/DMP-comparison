@@ -3,6 +3,7 @@
 # ============================================================================= #
 | Project:        [M3X Whip Project]
 | Title:          Dynamic Motor Primitives, no Kinematic Redundancy
+|                 Section 3.3 
 | Author:         Moses C. Nah
 | Email:          [Moses] mosesnah@mit.edu
 # ============================================================================= #
@@ -11,23 +12,13 @@
 
 import os
 import sys
-import math
 import shutil
-import numpy             as np
-import matplotlib.pyplot as plt
 import scipy.io
-from datetime  import datetime
-import moviepy.editor  as mpy
+import numpy             as np
+import moviepy.editor    as mpy
+import matplotlib.pyplot as plt
 
-
-
-# ======================================================================== #
-# ======================================================================== #
-#                                                                          #
-#                            ADDING LOCAL MODULES                          #
-#                                                                          #
-# ======================================================================== #
-# ======================================================================== #
+# Adding local modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
@@ -36,19 +27,12 @@ from utils        import min_jerk_traj
 from constants    import my_parser
 from constants    import Constants as C
 
-# ======================================================================== #
-# ======================================================================== #
-#                                                                          #
-#               ADDING MODULES FOR DYNAMIC MOVEMENT PRIMITIVES             #
-#                                                                          #
-# ======================================================================== #
-# ======================================================================== #
+# Adding DMP Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
 from InverseDynamicsModel       import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ
-
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -59,11 +43,15 @@ def run_motor_primitives( my_sim ):
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
     ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
 
+    # The number of actuators
     n = my_sim.n_act
+
+    # Setting the initial conditino of the robots
     q1 = np.pi * 1/4
     init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
+    # Get the initial end-effector position, and 8 targets in total
     xEEi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     idx = args.target_idx
     xEEf = xEEi + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
@@ -92,24 +80,25 @@ def run_movement_primitives( my_sim ):
     dt = my_sim.dt
 
     # Dynamic Movement Primitives 
-    # Define for x and y trajectory
     dmp_list = [] 
 
-    # The number of basis functions
+    # The number of basis functions for the imitation learning
     N = 10
 
-    for _ in range( 2 ):
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
+    # The x and y coordinates. 
+    tmp_str = [ "x", "y" ]
+    for i in range( 2 ):
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp" + tmp_str[ i ], cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
         dmp_list.append( dmp )
         
-
+    # Setting the initial condition of the arm posture 
     q1 = np.pi * 1/4
     init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( my_sim.nq ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # The parameters of min-jerk-traj
+    idx = args.target_idx    
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
-    idx = args.target_idx
     p0f = p0i + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
     D = 1.0     
 
@@ -133,23 +122,18 @@ def run_movement_primitives( my_sim ):
             t = tmp_dt * j
             p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D  )
 
-    # The number of basis functions
-    N = 10
-
-    # The time array for imitation learning
-    # This learns the best fit weight of the dmp
-    # For this, we need to define the 
-
-    for i in range( 2 ):
+        # Learning the trajectory 
         t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
         dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
 
+
     # Now, we integrate this solution
-    # For this, the initial and final time of the simulation is important
+    # The number of time step for the simulation
     N_sim = round( args.run_time/dt ) + 1
     
     # The p, dp, ddp of the robot 
+    # These commands should be later converted to joint space coordinates. 
     p_command   = np.zeros( ( nq, N_sim ) )
     dp_command  = np.zeros( ( nq, N_sim ) )
     ddp_command = np.zeros( ( nq, N_sim ) )
@@ -160,9 +144,9 @@ def run_movement_primitives( my_sim ):
         dmp = dmp_list[ i ]
 
         # y, z, dy, dz
-        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, N_sim )
+        t_arr, y_arr, _, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, N_sim )
 
-        p_command[   i, : ] =  y_arr
+        p_command[   i, : ] =   y_arr
         dp_command[  i, : ] =  dy_arr
         ddp_command[ i, : ] =  dz_arr 
 
@@ -174,6 +158,24 @@ def run_movement_primitives( my_sim ):
     frames = [ ]
     
     if args.cam_pos is not None: my_sim.set_camera_pos( ) 
+
+    # Saving the data if on
+    if args.is_save_data:
+        q_arr   = [ ]
+        dq_arr  = [ ]
+        ddq_arr = [ ]
+
+        p_arr   = [ ]
+        dp_arr  = [ ]
+        tau_arr = [ ]
+        
+        t_sim_arr = [ ]
+
+        # From the inverse kinematics of the robot
+        # This will be different with the actual q trajectory of the robot
+        q_command_arr  = [ ]
+        dq_command_arr = [ ]
+        ddq_command_arr = [ ]
 
     while t <= T + 1e-7:
 
@@ -194,8 +196,7 @@ def run_movement_primitives( my_sim ):
                 frames.append( rgb_img )  
 
             # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset:
-                my_sim.mj_viewer.is_reset = False
+            if my_sim.mj_viewer.is_reset: my_sim.mj_viewer.is_reset = False
             
             # If SPACE BUTTON is pressed
             if my_sim.mj_viewer.is_paused:    continue
@@ -207,25 +208,36 @@ def run_movement_primitives( my_sim ):
         q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
         q1 = np.arctan2( py, px ) - q2/2 
 
-        # The q_arr 
-        q_arr = np.array( [ q1, q2 ] )
-
-        # The dq_arr
-        dq_arr  = np.linalg.inv( get2DOF_J( q_arr ) ) @ dp_command[ :, n_steps ]
-
-        # The ddq_arr
-        ddq_arr = np.linalg.inv( get2DOF_J( q_arr ) ) @ ( ddp_command[ :, n_steps ] - get2DOF_dJ( q_arr, dq_arr  ) @ dq_arr )
+        # The joint trajectories
+        q   = np.array( [ q1, q2 ] )
+        dq  = np.linalg.inv( get2DOF_J( q ) ) @ dp_command[ :, n_steps ]
+        ddq = np.linalg.inv( get2DOF_J( q ) ) @ ( ddp_command[ :, n_steps ] - get2DOF_dJ( q, dq  ) @ dq)
 
         # Calculate the mass, coriolis matrix
-        tau = get2DOF_M( q_arr  ) @ ddq_arr + \
-              get2DOF_C( q_arr, dq_arr ) @ dq_arr
+        tau = get2DOF_M( q ) @ ddq + get2DOF_C( q, dq ) @ dq
 
         my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
+
+        if args.is_save_data:
+
+            t_sim_arr.append( t )
+
+            q_command_arr.append(     q )
+            dq_command_arr.append(   dq )
+            ddq_command_arr.append( ddq )
+
+            q_arr.append(   np.copy( my_sim.mj_data.qpos[ : ] ) )
+            dq_arr.append(  np.copy( my_sim.mj_data.qvel[ : ] ) )
+            ddq_arr.append( np.copy( my_sim.mj_data.qacc[ : ] ) )
+
+            p_arr.append(   np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) )
+            dp_arr.append(  np.copy( my_sim.mj_data.get_site_xvelp( "site_end_effector" ) ) )
+        
+            tau_arr.append( tau )
 
         my_sim.step( )
         n_steps += 1
         t += dt
-
 
     # If video should be recorded, write the video file. 
     if args.is_record_vid and frames is not None:
@@ -241,19 +253,18 @@ def run_movement_primitives( my_sim ):
         
         # Packing up the arrays as a dictionary
         # DMP for the first joint
-        dmp1 = dmp_list[ 0 ]
-        dmp2 = dmp_list[ 1 ]
+        for i in range( nq ):
+            dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
 
-        dict  = { "mov_type" : mov_type, "dt": dt, "x" : p_command[ 0, : ], "y" : p_command[ 1, : ], "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
-                "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
-                "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
-                "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+        # Saving the simulation data
+        dict  = { "t_sim_arr": t_sim_arr, "q_arr": q_arr, "dq_arr": dq_arr, "ddq_arr": ddq_arr,
+                  "p_arr": p_arr, "dq_arr":dp_arr,  "tau_arr": tau_arr, 
+                  "q_command_arr": q_command_arr, "dq_command_arr": dq_command_arr, "ddq_command_arr": ddq_command_arr } 
 
-        scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )    
+        scipy.io.savemat( my_sim.tmp_dir + "/dmp_sim.mat", { **dict } )    
 
     # Move the tmp folder to results if not empty, else just remove the tmp file. 
     shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
-
 
 
 if __name__ == "__main__":
