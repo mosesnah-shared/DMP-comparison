@@ -46,6 +46,7 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
+from InverseDynamicsModel       import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -80,18 +81,19 @@ def run_motor_primitives( my_sim ):
     # We assume pure position control 
     t     = 0.
     dt    = my_sim.mj_model.opt.timestep      
-    n_steps = 0 
     T     = args.run_time 
-    frames = [ ]    
 
-    q_arr = []
-    dq_arr = []
-    p_arr = []
-    dp_arr = []
-    p0_arr = []
+    n_steps = 0 
+
+    frames  = []    
+
+    t_arr   = []
+    q_arr   = []
+    dq_arr  = []
+    p_arr   = []
+    dp_arr  = []
+    p0_arr  = []
     dp0_arr = []
-
-    t_arr = []
 
     if args.cam_pos is not None: my_sim.set_camera_pos( )     
 
@@ -119,7 +121,6 @@ def run_motor_primitives( my_sim ):
             
             # If SPACE BUTTON is pressed
             if my_sim.mj_viewer.is_paused:    continue
-
 
         # Get the Jacobian of the end-effector
         # The Jacobian is 3-by-nq, although we only need the first two components
@@ -200,27 +201,29 @@ def run_movement_primitives( my_sim  ):
     # Define the canonical system
     cs = CanonicalSystem( mov_type = "discrete" )
 
-    n  = my_sim.nq
+    # The number of degrees of freedom of the tobot 
+    n = my_sim.nq
+
+    # The time step of the simulation 
     dt = my_sim.dt
 
     # Dynamic Movement Primitives 
     # Define for x and y trajectory
     dmp_list = [] 
 
-    for _ in range( 2 ):
 
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", alpha_z = 10, beta_z = 2.5 )
+    # The number of basis functions
+    N = 20
+
+    for _ in range( 2 ):
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
         dmp_list.append( dmp )
-        
-        # Adding the canonical system
-        dmp.add_canonical_system( cs )      
+          
 
     # The parameters of min-jerk-traj
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     p0f = p0i + np.array( [ -0.7, 0.7, 0. ] )
     D1 = 1.0
-
-
 
     g_old = np.copy( p0f )
     g_new = g_old + np.array( [ 1.5, 0.5, 0. ] )
@@ -244,20 +247,21 @@ def run_movement_primitives( my_sim  ):
             t = tmp_dt * j
             p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D1  )
 
-    # The number of basis functions
-    N = 20
 
     # Learn the weights
     for i in range( 2 ):
         t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
-        dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ], n_bfs = N )
+        dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
 
 
     # Now, we integrate this solution
     # For this, the initial and final time of the simulation is important
-    N_sim = round( args.run_time/dt  )
-    p_command = np.zeros( ( 2, N_sim + 1 ) )
+    N_sim = round( args.run_time/dt  ) + 1
+
+    p_command   = np.zeros( ( 2, N_sim ) )
+    dp_command  = np.zeros( ( 2, N_sim ) )
+    ddp_command = np.zeros( ( 2, N_sim ) )
 
     for i in range( 2 ):
 
@@ -266,12 +270,13 @@ def run_movement_primitives( my_sim  ):
         y_curr = p0i[ i ]
         z_curr = 0
 
-        for j in range( N_sim + 1 ):
+        for j in range( N_sim ):
             t = dt * j 
 
             if t <= args.start_time: 
-                p_command[ i, j ] = p0i[ i ]
-
+                p_command[ i, j ]   = p0i[ i ]
+                dp_command[ i, j ]  = 0
+                ddp_command[ i, j ] = 0
             else:
 
                 # Integrate the solution 
@@ -280,17 +285,7 @@ def run_movement_primitives( my_sim  ):
                 # Get the current canonical function value
                 s = cs.get_value( t - args.start_time )
 
-                psi_arr = np.array( [ dmp.basis_functions.calc_activation( k, s ) for k in np.arange( dmp.basis_functions.n_bfs ) ] )
-
-                # if psi_arr is super small, then just set for as zero since this implies there is no activation
-                if np.sum( psi_arr ) != 0:
-                    f = np.sum( dmp.weights * psi_arr ) / np.sum( psi_arr )
-                else:
-                    f = 0
-
-                # In case if f is nan, then just set f as 0 
-                if math.isnan( f ): f = 0 
-
+                f = dmp.basis_functions.calc_nonlinear_forcing_term( s, dmp.weights )
                 f *= s * ( p0f[ i ] - p0i[ i ] ) 
 
                 if t >= args.start_time + D1/2:
@@ -299,8 +294,10 @@ def run_movement_primitives( my_sim  ):
                 else:
                     g = g_old                    
 
-                y_new, z_new, _ ,_ = dmp.step( g[ i ], y_curr, z_curr, f, dt )
-                p_command[ i, j ] = y_new
+                y_new, z_new, dy, dz = dmp.step( g[ i ], y_curr, z_curr, f, dt )
+                p_command[ i, j ]   = y_new
+                dp_command[ i, j ]  = dy    #z_new / cs.tau
+                ddp_command[ i, j ] = dz/cs.tau # dz / cs.tau
                 y_curr = y_new
                 z_curr = z_new 
 
@@ -348,11 +345,20 @@ def run_movement_primitives( my_sim  ):
         q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
         q1 = np.arctan2( py, px ) - q2/2 
 
-        t_arr.append( t )
-        q_arr.append( np.array( [ q1, q2 ] ) )
+        # The q_arr 
+        q_arr = np.array( [ q1, q2 ] )
 
-        my_sim.mj_data.qpos[ : ] = np.array( [ q1, q2 ] )
+        # The dq_arr
+        dq_arr  = np.linalg.inv( get2DOF_J( q_arr ) ) @ dp_command[ :, n_steps ]
 
+        # The ddq_arr
+        ddq_arr = np.linalg.inv( get2DOF_J( q_arr ) ) @ ( ddp_command[ :, n_steps ] - get2DOF_dJ( q_arr, dq_arr  ) @ dq_arr )
+
+        # Calculate the mass, coriolis matrix
+        tau = get2DOF_M( q_arr  ) @ ddq_arr + \
+              get2DOF_C( q_arr, dq_arr ) @ dq_arr
+
+        my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
         my_sim.step( )
         n_steps += 1
         t += dt

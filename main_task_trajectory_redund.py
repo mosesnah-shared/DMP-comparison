@@ -51,9 +51,9 @@ from DynamicMovementPrimitives  import DynamicMovementPrimitives
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
-  
 
 # Helper Functions generated from MATLAB
+# For a 5DOF Robotå
 def getC( qpos, qvel  ):
     q1 = qpos[ 0 ]
     q2 = qpos[ 1 ]
@@ -131,7 +131,7 @@ def getdJ( qpos, qvel ):
     return dJ
         
 
-def run_motor_primitives( my_sim, mov_type ):
+def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl1 = CartesianImpedanceController( my_sim, args, name = "task_imp" )
@@ -146,26 +146,21 @@ def run_motor_primitives( my_sim, mov_type ):
     my_sim.add_ctrl( ctrl1 )
     my_sim.add_ctrl( ctrl2 )
 
-    if mov_type == "discrete":
-        # Set the initial posture of the robot
-        q1 = 0
+    # Set the initial posture of the robot
+    q1      = 0
+    ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
+    init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( n ) }
+    my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
-        # Reference posture 
-        ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
-        init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( n ) }
-        my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
+    # Get the initial position of the robot 
+    p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+    
+    # Define the final posture 
+    p0f = p0i + np.array( [ 3.0, 0, 0 ] )
 
-        # Get the initial position of the robot 
-        p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
-        
-        # Define the final posture 
-        p0f = p0i + np.array( [ 3.0, 0, 0 ] )
-
-        ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 2, ti = args.start_time  )    
-
-        # Set the joint controller as zero
-        ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
-
+    # Superposition of mechanical impedances
+    ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 2, ti = args.start_time  )    
+    ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
 
     # Run the simulation
     my_sim.run( )
@@ -177,257 +172,245 @@ def run_motor_primitives( my_sim, mov_type ):
     my_sim.close( )
 
 
-def run_movement_primitives( my_sim, mov_type ):
-
+def run_movement_primitives( my_sim ):
 
     # Define the canonical system
-    cs = CanonicalSystem( mov_type = mov_type )
+    cs = CanonicalSystem( mov_type = "discrete" )
 
-    n  = my_sim.nq
+    # The number of degrees of freedom of the tobot 
+    n = my_sim.nq
+
+    # The time step of the simulation 
     dt = my_sim.dt
 
     # Dynamic Movement Primitives 
     # Define for x and y trajectory
     dmp_list = [] 
+
+    # The number of basis functions
+    N = 20
+
     for _ in range( 2 ):
-        dmp = DynamicMovementPrimitives( mov_type = mov_type, alpha_z = 10, beta_z = 2.5 )
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
         dmp_list.append( dmp )
         
-        # Adding the canonical system
-        dmp.add_canonical_system( cs )      
+    # Set the initial posture of the robot
+    q1 = 0
+    ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
+    init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( len( ref_pos ) ) }
+    my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
+
+    # Get the initial position of the end-effector
+    p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+    
+    # Define the final posture 
+    p0f = p0i + np.array( [ 3.0, 0, 0 ] )
+
+    D = 2.0       
+
+    # The time constant tau is the duration of the movement. 
+    cs.tau = D        
+
+    # The number of sample points for imitation learning
+    P = 100
+
+    # The time step of imitation learning
+    # This is simply defined by D/P
+    tmp_dt = D/P
+
+    # The P samples points of p_des, dp_des, ddp_dex
+    p_des   = np.zeros( ( 3, P + 1 ) )
+    dp_des  = np.zeros( ( 3, P + 1 ) ) 
+    ddp_des = np.zeros( ( 3, P + 1 ) )
+
+    for i in range( 2 ):
+        for j in range( P + 1 ):
+            t = tmp_dt * j
+            p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D  )
 
 
-    if mov_type == "discrete":
 
-        # Set the initial posture of the robot
-        q1 = 0
+    # The time array for imitation learning
+    # This learns the best fit weight of the dmp
+    # For this, we need to define the 
 
-        # The initial posture and setting the initial condition of the robot
-        ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
-        init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( len( ref_pos ) ) }
-        my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
+    for i in range( 2 ):
+        t_arr = tmp_dt * np.arange( P + 1 )
+        dmp = dmp_list[ i ]
+        dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
 
-        # Get the initial position of the end-effector
-        p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
-        
-        # Define the final posture 
-        p0f = p0i + np.array( [ 3.0, 0, 0 ] )
+    # Now, we integrate this solution
+    # For this, the initial and final time of the simulation is important
+    N_sim = round( args.run_time/dt ) + 1
 
-        D = 2.0        # Duration D = 2 
+    p_command   = np.zeros( ( 3, N_sim ) )
+    dp_command  = np.zeros( ( 3, N_sim ) )
+    ddp_command = np.zeros( ( 3, N_sim ) )
 
-        # The time constant tau is the duration of the movement. 
-        cs.tau = D        
+    # Iterating through the dmps
+    for i in range( 2 ):
 
-        # The number of sample points for imitation learning
-        P = 100
+        dmp = dmp_list[ i ]
 
-        # The time step of imitation learning
-        # This is simply defined by D/P
-        tmp_dt = D/P
+        y_curr = p0i[ i ]
+        z_curr = 0
 
-        # The P samples points of p_des, dp_des, ddp_dex
-        p_des   = np.zeros( ( 2, P + 1 ) )
-        dp_des  = np.zeros( ( 2, P + 1 ) ) 
-        ddp_des = np.zeros( ( 2, P + 1 ) )
+        for j in range( N_sim  ):
+            t = dt * j 
 
-        for i in range( 2 ):
-            for j in range( P + 1 ):
-                t = tmp_dt * j
-                p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D  )
+            if t <= args.start_time: 
+                p_command[ i, j ]   = p0i[ i ]
+                dp_command[ i, j ]  = 0
+                ddp_command[ i, j ] = 0
 
-        # The number of basis functions
-        N = 20
+            else:
+                # Integrate the solution 
+                # Calculate the force from weights
+                # Get the current canonical function value
+                s = cs.get_value( t - args.start_time )
 
-        # The time array for imitation learning
-        # This learns the best fit weight of the dmp
-        # For this, we need to define the 
-
-        for i in range( 2 ):
-            t_arr = tmp_dt * np.arange( P + 1 )
-            dmp = dmp_list[ i ]
-            dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ], n_bfs = N )
-
-        # Now, we integrate this solution
-        # For this, the initial and final time of the simulation is important
-        N_sim = round( args.run_time/dt  )
-
-        p_command   = np.zeros( ( 3, N_sim + 1 ) )
-        dp_command  = np.zeros( ( 3, N_sim + 1 ) )
-        ddp_command = np.zeros( ( 3, N_sim + 1 ) )
-
-        for i in range( 2 ):
-
-            dmp = dmp_list[ i ]
-
-            y_curr = p0i[ i ]
-            z_curr = 0
-
-            for j in range( N_sim + 1 ):
-                t = dt * j 
-
-                if t <= args.start_time: 
-                    p_command[ i, j ]   = p0i[ i ]
-                    dp_command[ i, j ]  = 0
-                    ddp_command[ i, j ] = 0
-                else:
-
-                    # Integrate the solution 
-                    # Calculate the force from weights
-
-                    # Get the current canonical function value
-                    s = cs.get_value( t - args.start_time )
-
-                    psi_arr = np.array( [ dmp.basis_functions.calc_activation( k, s ) for k in np.arange( dmp.basis_functions.n_bfs ) ] )
-
-                    # if psi_arr is super small, then just set for as zero since this implies there is no activation
-                    if np.sum( psi_arr ) != 0:
-                        f = np.sum( dmp.weights * psi_arr ) / np.sum( psi_arr )
-                    else:
-                        f = 0
-
-                    # In case if f is nan, then just set f as 0 
-                    if math.isnan( f ): f = 0 
-
-                    f *= s * ( p0f[ i ] - p0i[ i ] ) 
-
-                    y_new, z_new, dy, dz = dmp.step( p0f[ i ], y_curr, z_curr, f, dt )
-                    p_command[ i, j ]   = y_new
-                    dp_command[ i, j ]  = z_new / cs.tau
-                    ddp_command[ i, j ] = dz / cs.tau
-
-                    y_curr = y_new
-                    z_curr = z_new 
+                f = dmp.basis_functions.calc_nonlinear_forcing_term( s, dmp.weights )
+                f *= s * ( p0f[ i ] - p0i[ i ] ) 
+                
+                y_new, z_new, dy, dz = dmp.step( p0f[ i ], y_curr, z_curr, f, dt )
+                p_command[ i, j ]   = y_new
+                dp_command[ i, j ]  = dy #z_new / cs.tau
+                ddp_command[ i, j ] = dz/cs.tau # dz / cs.tau
+                y_curr = y_new
+                z_curr = z_new 
 
 
-        # Since we now know the q_command, looping through the simulation 
-        # We assume pure position control 
-        t = 0.
-        n_steps = 0 
-        T = args.run_time 
-        frames = [ ]
-        
-        if args.cam_pos is not None: my_sim.set_camera_pos( ) 
+    # Since we now know the q_command, looping through the simulation 
+    t = 0.
+    T = args.run_time 
 
-        Mtmp = np.zeros( n * n )
+    n_steps = 0
+    frames = [ ]
+    
+    if args.cam_pos is not None: my_sim.set_camera_pos( ) 
 
-        q_arr = []
-        dq_arr = []
-        p_arr = []
-        dp_arr = []
-        dpr_arr = []
-        ddpr_arr = []        
-        dqr_arr = []
-        ddqr_arr = []
+    Mtmp = np.zeros( n * n )
+
+    q_arr    = []
+    dq_arr   = []
+    p_arr    = []
+    dp_arr   = []
+    dpr_arr  = []
+    ddpr_arr = []        
+    dqr_arr  = []
+    ddqr_arr = []
 
 
-        # Define the raw simulation 
-        while t <= T + 1e-7:
+    # Define the raw simulation 
+    while t <= T + 1e-7:
+
+        # Render the simulation if mj_viewer exists        
+        if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
 
             # Render the simulation if mj_viewer exists        
-            if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
+            my_sim.mj_viewer.render( )
 
-                # Render the simulation if mj_viewer exists        
-                my_sim.mj_viewer.render( )
+            if args.is_record_vid: 
+                # Read the raw rgb image
+                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
 
-                if args.is_record_vid: 
-                    # Read the raw rgb image
-                    rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
-
-                    # Convert BGR to RGB and flip upside down.
-                    rgb_img = np.flip( rgb_img, axis = 0 )
-                    
-                    # Add the frame list, this list will be converted to a video via moviepy library
-                    frames.append( rgb_img )  
-
-                # If reset button (BACKSPACE) is pressed
-                if my_sim.mj_viewer.is_reset:
-                    my_sim.mj_viewer.is_reset = False
+                # Convert BGR to RGB and flip upside down.
+                rgb_img = np.flip( rgb_img, axis = 0 )
                 
-                # If SPACE BUTTON is pressed
-                if my_sim.mj_viewer.is_paused:    continue
+                # Add the frame list, this list will be converted to a video via moviepy library
+                frames.append( rgb_img )  
 
-            # Get current end-effector position and velocity 
-            p  = np.copy( my_sim.mj_data.get_site_xpos(   "site_end_effector" ) )
-            dp = np.copy( my_sim.mj_data.get_site_xvelp(  "site_end_effector" ) )
-
-            p_arr.append( p )
-            dp_arr.append( dp )
-
-            q  = np.copy( my_sim.mj_data.qpos[ : ] )
-            dq = np.copy( my_sim.mj_data.qvel[ : ] )
-
-            q_arr.append( q )
-            dq_arr.append( dq )
-
-            # Define the reference p trajectory 
-            dpr  =  dp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ (  p_command[ :, n_steps ] -  p )
-            ddpr = ddp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ ( dp_command[ :, n_steps ] - dp )
-
-            dpr_arr.append( dpr )
-            ddpr_arr.append( ddpr )
-
-
-            jac_new = np.copy( my_sim.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
-            jac_pinv = np.linalg.pinv( jac_new )
-
-            # Define the reference q trajectory 
-            dJ = getdJ( q, dq )
-            dqr  = jac_pinv @ dpr 
-            ddqr = jac_pinv @ ( ddpr - dJ @ dq )
-
-            dqr_arr.append( dpr )
-            ddqr_arr.append( ddpr )
-
-
-            functions.mj_fullM( my_sim.mj_model, Mtmp, my_sim.mj_data.qM )
-            Mmat = np.copy( Mtmp.reshape( n, -1 ) )
-            Cmat = getC( q, dq )
-
-            tau = Mmat @ ddqr + Cmat @ dqr - 100 * np.eye( n ) @ ( dq - dqr )
-
-            my_sim.mj_data.ctrl[ : ] = tau 
-
-            my_sim.step( )
-
-            t += dt
-            n_steps += 1      
-
-        # If video should be recorded, write the video file. 
-        if args.is_record_vid and frames is not None:
-            clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
-            clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
-
-        # If video recorded/save data is true, then copy the model, main file and the arguments passed
-        if args.is_record_vid or args.is_save_data:
-            shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )                    
-        
-        # Saving the data for analysis
-        if args.is_save_data:
+            # If reset button (BACKSPACE) is pressed
+            if my_sim.mj_viewer.is_reset:
+                my_sim.mj_viewer.is_reset = False
             
-            # Packing up the arrays as a dictionary
-            # DMP for the first joint
-            dmp1 = dmp_list[ 0 ]
-            dmp2 = dmp_list[ 1 ]
+            # If SPACE BUTTON is pressed
+            if my_sim.mj_viewer.is_paused:    continue
 
-            dict  = { "mov_type" : mov_type, "dt": dt, "x" : p_command[ 0, : ], "y" : p_command[ 1, : ], "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
-                    "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
-                    "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
-                        "q": q_arr, "dq": dq_arr, "p": p_arr, "dp": dp_arr, "dpr": dpr_arr, "ddpr": ddpr_arr, "dqr": dqr_arr, "ddqr": ddqr_arr,
-                    "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+        # Get current end-effector position and velocity 
+        p  = np.copy( my_sim.mj_data.get_site_xpos(   "site_end_effector" ) )
+        dp = np.copy( my_sim.mj_data.get_site_xvelp(  "site_end_effector" ) )
 
-            scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )    
+        p_arr.append( p )
+        dp_arr.append( dp )
 
-        # Move the tmp folder to results if not empty, else just remove the tmp file. 
-        shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+        q  = np.copy( my_sim.mj_data.qpos[ : ] )
+        dq = np.copy( my_sim.mj_data.qvel[ : ] )
+
+        q_arr.append( q )
+        dq_arr.append( dq )
+
+        # Define the reference p trajectory 
+        dpr  =  dp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ (  p_command[ :, n_steps ] -  p )
+        ddpr = ddp_command[ :, n_steps ] + 80 * np.eye( 3 ) @ ( dp_command[ :, n_steps ] - dp )
+
+        dpr_arr.append( dpr )
+        ddpr_arr.append( ddpr )
+
+
+        jac_new = np.copy( my_sim.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
+
+        jac_pinv = np.linalg.pinv( jac_new )
+
+
+        # Define the reference q trajectory 
+        dJ = getdJ( q, dq )
+        dqr  = jac_pinv @ dpr 
+
+
+        ddqr = jac_pinv @ ( ddpr - dJ @ dq )
+
+        dqr_arr.append( dpr )
+        ddqr_arr.append( ddpr )
 
 
 
-    elif mov_type == "rhythmic":
-        NotImplementedError( )
+        functions.mj_fullM( my_sim.mj_model, Mtmp, my_sim.mj_data.qM )
+        Mmat = np.copy( Mtmp.reshape( n, -1 ) )
+        Cmat = getC( q, dq )
+
+        tau = Mmat @ ddqr + Cmat @ dqr - 100 * np.eye( n ) @ ( dq - dqr )
+
+        my_sim.mj_data.ctrl[ : ] = tau 
+
+        my_sim.step( )
+
+        t += dt
+        n_steps += 1      
+
+    # If video should be recorded, write the video file. 
+    if args.is_record_vid and frames is not None:
+        clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
+        clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
+
+    # If video recorded/save data is true, then copy the model, main file and the arguments passed
+    if args.is_record_vid or args.is_save_data:
+        shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )                    
+    
+    # Saving the data for analysis
+    if args.is_save_data:
+        
+        # Packing up the arrays as a dictionary
+        # DMP for the first joint
+        dmp1 = dmp_list[ 0 ]
+        dmp2 = dmp_list[ 1 ]
+
+        dict  = { "mov_type" : "discrete", "dt": dt, "x" : p_command[ 0, : ], "y" : p_command[ 1, : ], "tau1": dmp1.tau, "tau2": dmp2.tau, "alpha_s": cs.alpha_s,
+                "weights1": dmp1.weights, "centers1": dmp1.basis_functions.centers, "heights1": dmp1.basis_functions.heights, 
+                "weights2": dmp2.weights, "centers2": dmp2.basis_functions.centers, "heights2": dmp2.basis_functions.heights, 
+                    "q": q_arr, "dq": dq_arr, "p": p_arr, "dp": dp_arr, "dpr": dpr_arr, "ddpr": ddpr_arr, "dqr": dqr_arr, "ddqr": ddqr_arr,
+                "alpha_z": dmp1.alpha_z, "beta_z": dmp1.beta_z }
+
+        scipy.io.savemat( my_sim.tmp_dir + "/dmp.mat", { **dict } )    
+
+    # Move the tmp folder to results if not empty, else just remove the tmp file. 
+    shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+
+
 
 if __name__ == "__main__":
 
-    mov_type = "discrete"
+
     ctrl_type = "movement"
                                                                                 
     # Generate the parser, which is defined 
@@ -437,7 +420,6 @@ if __name__ == "__main__":
     args.model_name = "5DOF_planar_torque"
     my_sim = Simulation( args )
 
-    assert mov_type  in [ "discrete", "rhythmic" ]
     assert ctrl_type in [    "motor", "movement" ]
 
     # Define the robot that we will use 
@@ -447,8 +429,8 @@ if __name__ == "__main__":
     # Lookat [3] Distance, Elevation, Azimuth
     args.cam_pos = np.array( [ 2.0, 2.0, 0, 9, -90, 90 ] )    
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim, mov_type )
-    elif  ctrl_type == "movement": run_movement_primitives( my_sim, mov_type )
+    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
+    elif  ctrl_type == "movement": run_movement_primitives( my_sim )
 
     
 

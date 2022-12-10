@@ -9,9 +9,7 @@ from utils     import *
 from datetime  import datetime
 from constants import Constants as C
 
-
 epsilon = sys.float_info.epsilon
-
 
 class Simulation:
     """
@@ -62,8 +60,6 @@ class Simulation:
         # [Example] for dt = 0.001, we have 1000 for ( 1. / self.dt ), and for vid_speed = 2, self.fps / self.vid_speed = 30 
         #           Hence, we save/render the video every round( 1000 / 30 ) time steps. 
         self.vid_step   = round( ( 1. / self.dt ) / ( self.fps / self.args.vid_speed )  )
-
-        
 
         # Step for printing the data. 
         self.print_step = round( ( 1. / self.dt ) / self.args.print_freq  )  

@@ -104,8 +104,8 @@ def run_movement_primitives( my_sim ):
     cs   = CanonicalSystem( mov_type = "rhythmic" )
     cs_g = CanonicalSystem( mov_type = "discrete" )
 
-    dmp   = DynamicMovementPrimitives( mov_type = "rhythmic", alpha_z = 10, beta_z = 2.5 )
-    dmp_g = DynamicMovementPrimitives( mov_type = "discrete", alpha_z = 10, beta_z = 2.5 )
+    dmp   = DynamicMovementPrimitives( mov_type = "rhythmic", alpha_z = 10, beta_z = 2.5, n_bfs = N )
+    dmp_g = DynamicMovementPrimitives( mov_type = "discrete", alpha_z = 10, beta_z = 2.5, n_bfs = N )
 
     dmp.add_canonical_system( cs )      
     dmp_g.add_canonical_system( cs_g )      
@@ -143,7 +143,7 @@ def run_movement_primitives( my_sim ):
 
 
     t_arr = tmp_dt * np.arange( P + 1 )
-    dmp.imitation_learning( t_arr, q_des[ : ], dq_des[ : ], ddq_des[ : ], n_bfs = N )
+    dmp.imitation_learning( t_arr, q_des[ : ], dq_des[ : ], ddq_des[ : ] )
 
     # Now, we integrate this solution
     # For this, the initial and final time of the simulation is important
