@@ -12,22 +12,15 @@
 
 import os
 import sys
-import shutil
-import scipy.io
-
 import numpy           as np
-import moviepy.editor  as mpy
-
-from matplotlib  import pyplot as plt
 
 # Adding local modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
-from controllers  import JointImpedanceController
+from controllers  import JointImpedanceController, DMPJointController2DOF
 from utils        import min_jerk_traj
 from constants    import my_parser
-from constants    import Constants as C
 
 # The DMP Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
@@ -98,7 +91,7 @@ def run_movement_primitives( my_sim ):
     # The parameters of min-jerk-traj
     q0i = np.zeros( nq )
     q0f =  np.ones( nq )
-    D   = 2.0
+    D   = 3.0
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D        
@@ -141,103 +134,30 @@ def run_movement_primitives( my_sim ):
         dmp = dmp_list[ i ]
 
         # y, z, dy, dz
-        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( q0i[ i ], 0, q0f[ i ], dt, N_sim )
+        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( q0i[ i ], 0, q0f[ i ], dt, args.start_time, N_sim )
 
-        q_command[   i, : ] =  y_arr
+        q_command[   i, : ] =   y_arr
         dq_command[  i, : ] =  dy_arr
-        ddq_command[ i, : ] =  dz_arr 
+        ddq_command[ i, : ] =  dz_arr
 
-    # Since we now know the q_commands, looping through the simulation 
-    # Defining the parameters of the simulation
-    t = 0.      
-    T = args.run_time 
+    # Define the controller
+    dmp_ctrl = DMPJointController2DOF( my_sim, args, name = "joint_dmp" )
+    dmp_ctrl.set_traj( q_command, dq_command, ddq_command )
 
-    n_steps = 0
+    # Add the controller to the simulation
+    my_sim.add_ctrl( dmp_ctrl )
 
-    # For recording the video 
-    frames = [ ]
+    # Initialization of the simulation
     my_sim.init( qpos = q0i, qvel = np.zeros( nq ) )
-    
-    if args.cam_pos is not None: my_sim.set_camera_pos( ) 
 
-    # Saving the data if on
-    if args.is_save_data:
-        q_arr   = [ ]
-        dq_arr  = [ ]
-        ddq_arr = [ ]
-        tau_arr = [ ]
-        t_sim_arr = [ ]
+    # Run the simulation
+    my_sim.run( )
 
-
-    # Main-loop of the simulation
-    while t <= T + 1e-7:
-
-        # Render the simulation if mj_viewer exists        
-        if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
-
-            # Render the simulation if mj_viewer exists        
-            my_sim.mj_viewer.render( )
-
-            if args.is_record_vid: 
-                # Read the raw rgb image
-                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
-
-                # Convert BGR to RGB and flip upside down.
-                rgb_img = np.flip( rgb_img, axis = 0 )
-                
-                # Add the frame list, this list will be converted to a video via moviepy library
-                frames.append( rgb_img )  
-
-            # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset: my_sim.mj_viewer.is_reset = False
-            
-            # If SPACE BUTTON is pressed
-            if my_sim.mj_viewer.is_paused: continue
-
-        # The inverse dynamics model
-        # tau = M(q) ddq + C(q, dq)dq 
-        tau = get2DOF_M( q_command[ :, n_steps ]  ) @ ddq_command[ :, n_steps ] + \
-              get2DOF_C( q_command[ :, n_steps ], dq_command[ :, n_steps ] ) @ dq_command[ :, n_steps ]
-
-        # Assign the torque 
-        my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
-
-        if args.is_save_data:
-            t_sim_arr.append( t )
-            q_arr.append(   np.copy( my_sim.mj_data.qpos[ : ] ) )
-            dq_arr.append(  np.copy( my_sim.mj_data.qvel[ : ] ) )
-            ddq_arr.append( np.copy( my_sim.mj_data.qacc[ : ] ) )
-            tau_arr.append( tau )
-
-        my_sim.step( )
-        n_steps += 1
-        t += dt
-    
-    # If video should be recorded, write the video file. 
-    if args.is_record_vid:
-        clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
-        clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
-
-    # If video recorded/save data is true, then copy the model, main file and the arguments passed
-    if args.is_record_vid or args.is_save_data:
-        shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )        
-
-    # Saving the data for analysis
-    if args.is_save_data:
-        
-        # Packing up the arrays as a dictionary
-        # DMP for the first joint
+    if args.is_save_data or args.is_record_vid:  
         for i in range( nq ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
 
-        # Saving the simulation data
-        dict  = { "t_sim_arr": t_sim_arr, "q_arr": q_arr, "dq_arr": dq_arr, "ddq_arr": ddq_arr, "tau_arr": tau_arr }
-
-        scipy.io.savemat( my_sim.tmp_dir + "/dmp_sim.mat", { **dict } )    
-
-    # Move the tmp folder to results if not empty, else just remove the tmp file. 
-    shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
-
+    my_sim.close( )
 
 if __name__ == "__main__":
                                                                                 
@@ -247,7 +167,7 @@ if __name__ == "__main__":
 
     # Define the type of movement and its control method
     ctrl_type = "movement"
-    assert ctrl_type in [    "motor", "movement" ]
+    assert ctrl_type in [ "motor", "movement" ]
 
     # Define the robot that we will use 
     args.model_name = "2DOF_planar_torque"

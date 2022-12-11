@@ -1,6 +1,14 @@
-import numpy    as np
+import os
+import sys
 import scipy.io
+import numpy    as np
+from mujoco_py import functions
+
 from   modules.utils     import min_jerk_traj
+
+# The modules Modules
+sys.path.append( os.path.join( os.path.dirname(__file__), "../DMPmodules" ) )
+from InverseDynamicsModel import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ, get5DOF_dJ, get5DOF_C
 
 
 class Controller:
@@ -57,7 +65,6 @@ class Controller:
             val = getattr( self, name )
             getattr( self, name + "_arr" ).append( val )
         
-
     def export_data( self, dir_name ):
         """
             Export the data as mat file
@@ -76,6 +83,9 @@ class Controller:
         """
         raise NotImplementedError
 
+# ============================================================ #
+# ================ Dynamic Motor Primitives ================== #
+# ============================================================ #
 
 class ImpedanceController( Controller ):
     """
@@ -88,12 +98,6 @@ class ImpedanceController( Controller ):
     def __init__( self, mj_sim, args, name ): 
 
         super( ).__init__( mj_sim, args, name )
-
-        # There are crucial parameters which can be calculated from the given model. 
-        # Hence, "parsing" the xml model file
-        # The model name should be within the following list 
-
-
 
 class JointImpedanceController( ImpedanceController ):
 
@@ -350,8 +354,6 @@ class CartesianImpedanceController( ImpedanceController ):
         self.init( )
         self.n_movs = 0 
 
-# Cartesian Impedance Controller for Obstacle avoidance
-# This is separately needed
 class CartesianImpedanceControllerObstacle( ImpedanceController ):
 
     def __init__( self, mj_sim, mj_args, name, obs_pos ):
@@ -426,3 +428,205 @@ class CartesianImpedanceControllerObstacle( ImpedanceController ):
 
         self.init( )
         self.n_movs = 0 
+
+# ============================================================ #
+# ============= Dynamic Movement Primitives ================== #
+# ============================================================ #
+
+class DMPJointController2DOF( Controller ):
+
+    def __init__( self, mj_sim, mj_args, name ):
+
+        super( ).__init__( mj_sim, mj_args, name )
+
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "q_command", "dq_command", "ddq_command"  )
+
+        # The name of variables that will be saved 
+        self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp" )
+
+        # Generate an empty lists names of parameters
+        self.init( )
+
+    def set_traj( self, q, dq, ddq ):
+
+        # The joint trajectories that the controller aims to follow    
+        self.q_command   =   q
+        self.dq_command  =  dq
+        self.ddq_command = ddq
+    
+    def input_calc( self, t ):
+
+        assert self.q_command   is not None
+        assert self.dq_command  is not None
+        assert self.ddq_command is not None
+        
+        # The current time must be changed to the number of steps 
+        # The number of steps only matter, hence the variable passed should match
+        assert self.mj_sim.n_steps == round( t/self.mj_sim.dt )
+        
+        # The inverse dynamics model
+        n = self.mj_sim.n_steps
+
+        # The current time
+        self.t = t
+
+        # Get the current angular position and velocity of the robot arm only
+        self.q   = np.copy( self.mj_data.qpos[ :self.n_act ] )
+        self.dq  = np.copy( self.mj_data.qvel[ :self.n_act ] )
+        self.ddq = np.copy( self.mj_data.qacc[ :self.n_act ] )        
+
+        # Get the current angular position and velocity of the robot arm only
+        self.p   = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dp  = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
+
+        # The inverse dynamics model 
+        self.tau = get2DOF_M( self.q_command[ :, n ]  ) @ self.ddq_command[ :, n ] + \
+                   get2DOF_C( self.q_command[ :, n ], self.dq_command[ :, n ] ) @ self.dq_command[ :, n ]
+
+        if self.mj_args.is_save_data: self.save_data( )
+
+        #     (1) index array       (3) The tau value
+        return  np.arange( self.n_act ), self.tau
+
+
+class DMPTaskController2DOF( Controller ):
+
+    def __init__( self, mj_sim, mj_args, name ):
+
+        super( ).__init__( mj_sim, mj_args, name )
+
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "p_command", "dp_command", "ddp_command"  )
+
+        # The name of variables that will be saved 
+        self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp", "J", "dJ"  )
+
+        # Generate an empty lists names of parameters
+        self.init( )
+
+    def set_traj( self, p, dp, ddp ):
+
+        # The joint trajectories that the controller aims to follow    
+        self.p_command   =   p
+        self.dp_command  =  dp
+        self.ddp_command = ddp
+    
+    def input_calc( self, t ):
+
+        assert self.p_command   is not None
+        assert self.dp_command  is not None
+        assert self.ddp_command is not None
+        
+        # The current time must be changed to the number of steps 
+        # The number of steps only matter, hence the variable passed should match
+        assert self.mj_sim.n_steps == round( t/self.mj_sim.dt )
+        
+        # The inverse dynamics model
+        n  = self.mj_sim.n_steps
+        px = self.p_command[ 0, n ]
+        py = self.p_command[ 1, n ]
+        
+        # Solve the inverse kinematics 
+        q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
+        q1 = np.arctan2( py, px ) - q2/2 
+
+        # The end-effector position and velocity
+        self.p  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
+
+        self.t  = t
+        
+        # The joint positions
+        self.q   = np.array( [ q1, q2 ] )
+
+        # The joint velocities
+        self.J   = get2DOF_J(  self.q )
+        self.dq  = np.linalg.inv( self.J ) @ self.dp_command[ :, n ]
+
+        # The joint accelerations
+        self.dJ = get2DOF_dJ( self.q, self.dq)
+        self.ddq = np.linalg.inv( self.J ) @ ( self.ddp_command[ :, n ] - self.dJ @ self.dq )
+
+        # The torque array
+        self.tau = get2DOF_M( self.q ) @ self.ddq + get2DOF_C( self.q, self.dq ) @ self.dq
+
+        if self.mj_args.is_save_data: self.save_data( )
+
+        # (1) index array (3) The tau value
+        return  np.arange( self.n_act ), self.tau
+
+
+class DMPTaskController5DOF( Controller ):
+
+    def __init__( self, mj_sim, mj_args, name ):
+
+        super( ).__init__( mj_sim, mj_args, name )
+
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "p_command", "dp_command", "ddp_command"  )
+
+        # The name of variables that will be saved 
+        self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp", "J", "dJ", "dpr", "ddpr", "dqr", "ddqr" )
+
+        # Generate an empty lists names of parameters
+        self.init( )
+
+    def set_traj( self, p, dp, ddp ):
+
+        # The joint trajectories that the controller aims to follow    
+        self.p_command   =   p
+        self.dp_command  =  dp
+        self.ddp_command = ddp
+    
+    def input_calc( self, t ):
+
+        assert self.p_command   is not None
+        assert self.dp_command  is not None
+        assert self.ddp_command is not None
+        
+        # The current time must be changed to the number of steps 
+        # The number of steps only matter, hence the variable passed should match
+        assert self.mj_sim.n_steps == round( t/self.mj_sim.dt )
+
+        n = self.mj_sim.n_steps
+        
+        # Get current end-effector position and velocity 
+        self.p  = np.copy( self.mj_sim.mj_data.get_site_xpos(   "site_end_effector" ) )
+        self.dp = np.copy( self.mj_sim.mj_data.get_site_xvelp(  "site_end_effector" ) )
+
+        # Get the current robot's joint position/velocity trajectories
+        self.q   = np.copy( self.mj_sim.mj_data.qpos[ : ] )
+        self.dq  = np.copy( self.mj_sim.mj_data.qvel[ : ] )
+        self.ddq = np.copy( self.mj_sim.mj_data.qacc[ : ] )
+
+        # The Jacobians
+        self.J  = np.copy( self.mj_sim.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
+        jac_pinv = np.linalg.pinv( self.J )
+
+        # Get the time-derivative of the Jacobian
+        self.dJ   = get5DOF_dJ( self.q, self.dq )
+
+        # Define the reference p trajectory 
+        self.dpr  =  self.dp_command[ :, n ] + 80 * np.eye( 3 ) @ (  self.p_command[ :, n ] - self.p  )
+        self.ddpr = self.ddp_command[ :, n ] + 80 * np.eye( 3 ) @ ( self.dp_command[ :, n ] - self.dp )
+
+        # The dq/ddq reference trajectory 
+        self.dqr  = jac_pinv @ self.dpr 
+        self.ddqr = jac_pinv @ ( self.ddpr - self.dJ @ self.dq )
+
+        # The mass/Coriolis matrices
+        nq = self.mj_sim.nq
+        Mtmp = np.zeros( nq * nq )
+        functions.mj_fullM( self.mj_sim.mj_model, Mtmp, self.mj_sim.mj_data.qM )
+        self.M = np.copy( Mtmp.reshape( nq, -1 ) )
+        self.C = get5DOF_C( self.q, self.dq )
+
+        self.tau = self.M @ self.ddqr + self.C @ self.dqr - 100 * np.eye( nq ) @ ( self.dq - self.dqr )
+
+        if self.mj_args.is_save_data: self.save_data( )
+
+        # (1) index array (3) The tau value
+        return  np.arange( self.n_act ), self.tau
+
+# class DMPTaskControllerObstacle( Controller ):

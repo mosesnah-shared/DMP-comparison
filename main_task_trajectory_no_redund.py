@@ -12,27 +12,23 @@
 
 import os
 import sys
-import shutil
-import scipy.io
-import numpy             as np
-import moviepy.editor    as mpy
-import matplotlib.pyplot as plt
+import numpy  as np
+
 
 # Adding local modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
-from controllers  import CartesianImpedanceController
+from controllers  import CartesianImpedanceController, DMPTaskController2DOF
 from utils        import min_jerk_traj
 from constants    import my_parser
-from constants    import Constants as C
 
 # Adding DMP Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
-from InverseDynamicsModel       import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ
+
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -144,127 +140,27 @@ def run_movement_primitives( my_sim ):
         dmp = dmp_list[ i ]
 
         # y, z, dy, dz
-        t_arr, y_arr, _, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, N_sim )
+        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, args.start_time, N_sim )
 
         p_command[   i, : ] =   y_arr
         dp_command[  i, : ] =  dy_arr
         ddp_command[ i, : ] =  dz_arr 
 
-    # Since we now know the q_command, looping through the simulation 
-    t = 0.
-    T = args.run_time 
+    # Define the controller
+    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp" )
+    dmp_ctrl.set_traj( p_command, dp_command, ddp_command )
 
-    n_steps = 0
-    frames = [ ]
-    
-    if args.cam_pos is not None: my_sim.set_camera_pos( ) 
+    # Add the controller to the simulation
+    my_sim.add_ctrl( dmp_ctrl )
 
-    # Saving the data if on
-    if args.is_save_data:
-        q_arr   = [ ]
-        dq_arr  = [ ]
-        ddq_arr = [ ]
+    # Run the simulation
+    my_sim.run( )
 
-        p_arr   = [ ]
-        dp_arr  = [ ]
-        tau_arr = [ ]
-        
-        t_sim_arr = [ ]
-
-        # From the inverse kinematics of the robot
-        # This will be different with the actual q trajectory of the robot
-        q_command_arr  = [ ]
-        dq_command_arr = [ ]
-        ddq_command_arr = [ ]
-
-    while t <= T + 1e-7:
-
-        # Render the simulation if mj_viewer exists        
-        if my_sim.mj_viewer is not None and n_steps % my_sim.vid_step == 0:
-
-            # Render the simulation if mj_viewer exists        
-            my_sim.mj_viewer.render( )
-
-            if args.is_record_vid: 
-                # Read the raw rgb image
-                rgb_img = my_sim.mj_viewer.read_pixels( my_sim.mj_viewer.width, my_sim.mj_viewer.height, depth = False )
-
-                # Convert BGR to RGB and flip upside down.
-                rgb_img = np.flip( rgb_img, axis = 0 )
-                
-                # Add the frame list, this list will be converted to a video via moviepy library
-                frames.append( rgb_img )  
-
-            # If reset button (BACKSPACE) is pressed
-            if my_sim.mj_viewer.is_reset: my_sim.mj_viewer.is_reset = False
-            
-            # If SPACE BUTTON is pressed
-            if my_sim.mj_viewer.is_paused:    continue
-
-        px = p_command[ 0, n_steps ]
-        py = p_command[ 1, n_steps ]
-        
-        # Solve the inverse kinematics 
-        q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
-        q1 = np.arctan2( py, px ) - q2/2 
-
-        # The joint trajectories
-        q   = np.array( [ q1, q2 ] )
-        dq  = np.linalg.inv( get2DOF_J( q ) ) @ dp_command[ :, n_steps ]
-        ddq = np.linalg.inv( get2DOF_J( q ) ) @ ( ddp_command[ :, n_steps ] - get2DOF_dJ( q, dq  ) @ dq)
-
-        # Calculate the mass, coriolis matrix
-        tau = get2DOF_M( q ) @ ddq + get2DOF_C( q, dq ) @ dq
-
-        my_sim.mj_data.ctrl[ :my_sim.n_act ] = tau
-
-        if args.is_save_data:
-
-            t_sim_arr.append( t )
-
-            q_command_arr.append(     q )
-            dq_command_arr.append(   dq )
-            ddq_command_arr.append( ddq )
-
-            q_arr.append(   np.copy( my_sim.mj_data.qpos[ : ] ) )
-            dq_arr.append(  np.copy( my_sim.mj_data.qvel[ : ] ) )
-            ddq_arr.append( np.copy( my_sim.mj_data.qacc[ : ] ) )
-
-            p_arr.append(   np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) )
-            dp_arr.append(  np.copy( my_sim.mj_data.get_site_xvelp( "site_end_effector" ) ) )
-        
-            tau_arr.append( tau )
-
-        my_sim.step( )
-        n_steps += 1
-        t += dt
-
-    # If video should be recorded, write the video file. 
-    if args.is_record_vid and frames is not None:
-        clip = mpy.ImageSequenceClip( frames, fps = my_sim.fps )
-        clip.write_videofile( my_sim.tmp_dir + "video.mp4", fps = my_sim.fps, logger = None )
-
-    # If video recorded/save data is true, then copy the model, main file and the arguments passed
-    if args.is_record_vid or args.is_save_data:
-        shutil.copyfile( C.MODEL_DIR + my_sim.model_name + ".xml", my_sim.tmp_dir + "model.xml" )                    
-    
-    # Saving the data for analysis
-    if args.is_save_data:
-        
-        # Packing up the arrays as a dictionary
-        # DMP for the first joint
+    if args.is_save_data or args.is_record_vid:  
         for i in range( nq ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
 
-        # Saving the simulation data
-        dict  = { "t_sim_arr": t_sim_arr, "q_arr": q_arr, "dq_arr": dq_arr, "ddq_arr": ddq_arr,
-                  "p_arr": p_arr, "dq_arr":dp_arr,  "tau_arr": tau_arr, 
-                  "q_command_arr": q_command_arr, "dq_command_arr": dq_command_arr, "ddq_command_arr": ddq_command_arr } 
-
-        scipy.io.savemat( my_sim.tmp_dir + "/dmp_sim.mat", { **dict } )    
-
-    # Move the tmp folder to results if not empty, else just remove the tmp file. 
-    shutil.move( my_sim.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( my_sim.tmp_dir ) ) != 0 else os.rmdir( my_sim.tmp_dir )
+    my_sim.close( )
 
 
 if __name__ == "__main__":

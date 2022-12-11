@@ -211,25 +211,23 @@ def run_movement_primitives( my_sim  ):
     # Define for x and y trajectory
     dmp_list = [] 
 
-
     # The number of basis functions
     N = 20
 
     for _ in range( 2 ):
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
         dmp_list.append( dmp )
-          
 
     # The parameters of min-jerk-traj
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     p0f = p0i + np.array( [ -0.7, 0.7, 0. ] )
-    D1 = 1.0
-
-    g_old = np.copy( p0f )
-    g_new = g_old + np.array( [ 1.5, 0.5, 0. ] )
-    # The time constant tau is the duration of the movement. 
+    D1  = 1.0
     cs.tau = D1 
 
+    # For this, the goal is changing.
+    g_old = np.copy( p0f )
+    g_new = g_old + np.array( [ 1.5, 0.5, 0. ] )
+    
     # The number of sample points for imitation learning
     P = 100
 
@@ -247,9 +245,6 @@ def run_movement_primitives( my_sim  ):
             t = tmp_dt * j
             p_des[ i, j ], dp_des[ i, j ], ddp_des[ i, j ] = min_jerk_traj( t, 0.0, p0i[ i ], p0f[ i ], D1  )
 
-
-    # Learn the weights
-    for i in range( 2 ):
         t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
         dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
@@ -263,6 +258,7 @@ def run_movement_primitives( my_sim  ):
     dp_command  = np.zeros( ( 2, N_sim ) )
     ddp_command = np.zeros( ( 2, N_sim ) )
 
+    # Usually we have a separate
     for i in range( 2 ):
 
         dmp = dmp_list[ i ]
@@ -277,6 +273,7 @@ def run_movement_primitives( my_sim  ):
                 p_command[ i, j ]   = p0i[ i ]
                 dp_command[ i, j ]  = 0
                 ddp_command[ i, j ] = 0
+
             else:
 
                 # Integrate the solution 
