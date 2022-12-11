@@ -89,7 +89,7 @@ class DynamicMovementPrimitives:
 
         # The xi array of Eq. 2.14 of [REF]
         # [REF] IBID
-        s_arr = self.cs.get_value( self.t_des ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones_like( self.t_arr )
+        s_arr = self.cs.get_value( self.t_des ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones_like( self.t_des )
             
         for i in range( self.basis_functions.n_bfs ):
             gamma = self.basis_functions.calc_ith_activation( i, self.cs.get_value( self.t_des ) ) 
@@ -98,7 +98,7 @@ class DynamicMovementPrimitives:
             self.weights[ i ] = np.sum( s_arr * gamma * self.f_target ) / np.sum( s_arr * gamma * s_arr ) if np.sum( s_arr * gamma * s_arr ) != 0 else 0
 
 
-    def integrate( self, y0, z0, g, dt, N ):
+    def integrate( self, y0, z0, g, dt, t0, N ):
         """
             Integrating the tranformation system
 
@@ -120,14 +120,20 @@ class DynamicMovementPrimitives:
             # Get the current time of the time_arr
             t = self.t_arr[ i ]
 
-            # Get the current canonical function value
-            s = self.cs.get_value( t )
-            f = self.basis_functions.calc_nonlinear_forcing_term( s, self.weights )
-        
-            # If discrete movement, multiply (g-y0) and s on the value 
-            f *= s * ( g - y0 ) if self.mov_type == "discrete" else 1
+            if t < t0:
+                self.y_arr[ i + 1 ] = self.y_arr[ i ]
+                self.z_arr[ i + 1 ] = self.z_arr[ i ]
 
-            self.y_arr[ i + 1 ], self.z_arr[ i + 1 ], self.dy_arr[ i ], self.dz_arr[ i ] = self.step( g, self.y_arr[ i ], self.z_arr[ i ] ,f, dt )
+            else:
+
+                # Get the current canonical function value
+                s = self.cs.get_value( t - t0 )
+                f = self.basis_functions.calc_nonlinear_forcing_term( s, self.weights )
+            
+                # If discrete movement, multiply (g-y0) and s on the value 
+                f *= s * ( g - y0 ) if self.mov_type == "discrete" else 1
+
+                self.y_arr[ i + 1 ], self.z_arr[ i + 1 ], self.dy_arr[ i ], self.dz_arr[ i ] = self.step( g, self.y_arr[ i ], self.z_arr[ i ] ,f, dt )
 
         # Copy the final elements
         self.dy_arr[ -1 ] = self.dy_arr[ -2 ]

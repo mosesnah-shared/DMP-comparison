@@ -166,7 +166,6 @@ class Simulation:
         # Move the tmp folder to results if not empty, else just remove the tmp file. 
         shutil.move( self.tmp_dir, C.SAVE_DIR  ) if len( os.listdir( self.tmp_dir ) ) != 0 else os.rmdir( self.tmp_dir )
         
-
     def set_camera_pos( self ):
         """
             Set the camera posture of the simulation. 
@@ -225,9 +224,6 @@ class Simulation:
                     _, tau_tmp = ctrl.input_calc( self.t )
                     tau += tau_tmp
 
-                    if self.args.is_save_data and self.n_steps % self.save_step == 0: 
-                        ctrl.save_data( )
-
                 self.mj_data.ctrl[ :self.n_act ] = tau
 
             # Run a single simulation 
@@ -237,7 +233,6 @@ class Simulation:
             if self.obj is not None: 
                 self.obj_val = self.obj.output_calc( self.mj_model, self.mj_data, self.args )
                 self.obj_arr[ self.n_steps - 1 ] = self.obj_val 
-
 
             # Print the camera positions
             # print( self.mj_viewer.cam.lookat[ 0 ], self.mj_viewer.cam.lookat[ 1 ], self.mj_viewer.cam.lookat[ 2 ],  self.mj_viewer.cam.distance , self.mj_viewer.cam.elevation, self.mj_viewer.cam.azimuth  )
