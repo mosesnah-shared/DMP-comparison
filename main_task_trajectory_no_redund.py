@@ -130,9 +130,9 @@ def run_movement_primitives( my_sim ):
     
     # The p, dp, ddp of the robot 
     # These commands should be later converted to joint space coordinates. 
-    p_command   = np.zeros( ( nq, N_sim ) )
-    dp_command  = np.zeros( ( nq, N_sim ) )
-    ddp_command = np.zeros( ( nq, N_sim ) )
+    p_command   = np.zeros( ( 2, N_sim ) )
+    dp_command  = np.zeros( ( 2, N_sim ) )
+    ddp_command = np.zeros( ( 2, N_sim ) )
 
     # Iterating through the dmps
     for i in range( 2 ):
@@ -164,11 +164,6 @@ def run_movement_primitives( my_sim ):
 
 
 if __name__ == "__main__":
-
-    # Generate an instance of our Simulation
-    # The model is generated since the model name is passed via arguments
-
-    ctrl_type = "movement"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )
@@ -177,7 +172,7 @@ if __name__ == "__main__":
     args.model_name = "2DOF_planar_torque"
     my_sim = Simulation( args )
 
-    assert ctrl_type in [    "motor", "movement" ]
+    assert args.sim_type in [ "motor", "movement" ]
 
     # Define the robot that we will use 
     args.model_name = "2DOF_planar_torque"
@@ -186,8 +181,8 @@ if __name__ == "__main__":
     # Lookat [3] Distance, Elevation, Azimuth
     args.cam_pos = np.array( [ 0, 1, 0, 5, -90, 90 ] )    
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
-    elif  ctrl_type == "movement": run_movement_primitives( my_sim )
+    if    args.sim_type == "motor"   :    run_motor_primitives( my_sim )
+    elif  args.sim_type == "movement": run_movement_primitives( my_sim )
 
     
 

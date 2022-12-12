@@ -166,8 +166,7 @@ if __name__ == "__main__":
     args, unknown = parser.parse_known_args( )
 
     # Define the type of movement and its control method
-    ctrl_type = "movement"
-    assert ctrl_type in [ "motor", "movement" ]
+    assert args.sim_type in [ "motor", "movement" ]
 
     # Define the robot that we will use 
     args.model_name = "2DOF_planar_torque"
@@ -178,8 +177,8 @@ if __name__ == "__main__":
 
     my_sim = Simulation( args )    
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
-    elif  ctrl_type == "movement": run_movement_primitives( my_sim )
+    if    args.sim_type == "motor"   :    run_motor_primitives( my_sim )
+    elif  args.sim_type == "movement": run_movement_primitives( my_sim )
 
     
 

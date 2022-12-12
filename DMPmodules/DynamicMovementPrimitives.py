@@ -47,6 +47,19 @@ class DynamicMovementPrimitives:
         # The weights of the basis function, set as zero initially
         self.weights = np.zeros( self.basis_functions.n_bfs )
 
+        # Initialization of the movement parameters
+        self.t_des   = 0
+        self.y_des   = 0
+        self.dy_des  = 0
+        self.ddy_des = 0
+
+        self.t_arr  = 0
+        self.y_arr  = 0
+        self.z_arr  = 0
+        self.dy_arr = 0
+        self.dz_arr = 0
+        
+
     def step( self, g, y, z, f, dt ):
         """
             Get the next y and z value with the dt step.
@@ -155,8 +168,6 @@ class DynamicMovementPrimitives:
                   "tau": self.cs.tau, "alpha_s": self.cs.alpha_s }
 
         scipy.io.savemat( dir2save + "/" + self.name + ".mat", { **dict } )    
-
-
 
 
 if __name__ == "__main__":
