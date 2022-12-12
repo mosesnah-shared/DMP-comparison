@@ -15,7 +15,7 @@ class CanonicalSystem:
         assert mov_type in [ "rhythmic", "discrete" ]
         self.mov_type = mov_type
 
-        self.alpha_s  = kwargs.get( 'alpha_s', 1.0 ) if self.mov_type == "discrete" else None
+        self.alpha_s  = kwargs.get( 'alpha_s', 1.0 ) if self.mov_type == "discrete" else -1
         self.tau      = kwargs.get( 'tau'    , 1.0 )
 
         self.reset( )

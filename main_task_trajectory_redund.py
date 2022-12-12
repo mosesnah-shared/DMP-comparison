@@ -12,15 +12,7 @@
 
 import os
 import sys
-import shutil
-import scipy.io
-
-import numpy             as np
-import matplotlib.pyplot as plt
-import moviepy.editor    as mpy
-
-
-
+import numpy as np
 
 # The Local Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
@@ -29,20 +21,20 @@ from simulation   import Simulation
 from controllers  import CartesianImpedanceController, JointImpedanceController, DMPTaskController5DOF
 from utils        import min_jerk_traj
 from constants    import my_parser
-from constants    import Constants as C
 
 # Modules for DMP
 sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
-from InverseDynamicsModel       import get5DOF_C, get5DOF_dJ
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
 
-
 def run_motor_primitives( my_sim ):
+
+    # The number of actuators
+    n = my_sim.n_act
 
     # Define the impedances
     ctrl1 = CartesianImpedanceController( my_sim, args, name =  "task_imp" )
@@ -55,9 +47,6 @@ def run_motor_primitives( my_sim ):
     # Superposition of mechanical impedances
     my_sim.add_ctrl( ctrl1 )
     my_sim.add_ctrl( ctrl2 )
-
-    # The number of actuators
-    n = my_sim.n_act
     
     # Set the initial posture of the high-DOF robot
     q1      = 0
@@ -170,15 +159,12 @@ def run_movement_primitives( my_sim ):
     my_sim.run( )
 
     if args.is_save_data or args.is_record_vid:  
-        for i in range( nq ):
+        for i in range( 2 ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
 
     my_sim.close( )
 
 if __name__ == "__main__":
-
-
-    ctrl_type = "movement"
                                                                                 
     # Generate the parser, which is defined 
     parser = my_parser( )
@@ -187,7 +173,7 @@ if __name__ == "__main__":
     args.model_name = "5DOF_planar_torque"
     my_sim = Simulation( args )
 
-    assert ctrl_type in [    "motor", "movement" ]
+    assert args.sim_type in [    "motor", "movement" ]
 
     # Define the robot that we will use 
     args.model_name = "5DOF_planar_torque"
@@ -196,8 +182,7 @@ if __name__ == "__main__":
     # Lookat [3] Distance, Elevation, Azimuth
     args.cam_pos = np.array( [ 2.0, 2.0, 0, 9, -90, 90 ] )    
 
-    if    ctrl_type == "motor"   :    run_motor_primitives( my_sim )
-    elif  ctrl_type == "movement": run_movement_primitives( my_sim )
+    if    args.sim_type == "motor"   :    run_motor_primitives( my_sim )
+    elif  args.sim_type == "movement": run_movement_primitives( my_sim )
 
-    
 

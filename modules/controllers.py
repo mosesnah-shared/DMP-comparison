@@ -541,12 +541,12 @@ class DMPTaskController2DOF( Controller ):
         self.q   = np.array( [ q1, q2 ] )
 
         # The joint velocities
-        self.J   = get2DOF_J(  self.q )
-        self.dq  = np.linalg.inv( self.J ) @ self.dp_command[ :, n ]
+        self.J   = get2DOF_J( self.q )
+        self.dq  = np.linalg.inv( self.J ) @ self.dp_command[ :2, n ]
 
         # The joint accelerations
-        self.dJ = get2DOF_dJ( self.q, self.dq)
-        self.ddq = np.linalg.inv( self.J ) @ ( self.ddp_command[ :, n ] - self.dJ @ self.dq )
+        self.dJ = get2DOF_dJ( self.q, self.dq )
+        self.ddq = np.linalg.inv( self.J ) @ ( self.ddp_command[ :2, n ] - self.dJ @ self.dq )
 
         # The torque array
         self.tau = get2DOF_M( self.q ) @ self.ddq + get2DOF_C( self.q, self.dq ) @ self.dq
@@ -590,6 +590,8 @@ class DMPTaskController5DOF( Controller ):
         assert self.mj_sim.n_steps == round( t/self.mj_sim.dt )
 
         n = self.mj_sim.n_steps
+
+        self.t = t
         
         # Get current end-effector position and velocity 
         self.p  = np.copy( self.mj_sim.mj_data.get_site_xpos(   "site_end_effector" ) )

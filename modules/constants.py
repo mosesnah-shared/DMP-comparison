@@ -20,6 +20,8 @@ def my_parser( ):
     parser.add_argument( '--opt_type'    , action = 'store'       , type = str   ,  default = "nlopt" ,              help = '[Options] "nlopt", "ML_DDPG", "ML_TD3" '                                           )
     parser.add_argument( '--print_mode'  , action = 'store'       , type = str   ,  default = 'normal',              help = 'Print mode, choose between [short] [normal] [verbose]'                             )
 
+    parser.add_argument( '--sim_type'    , action = 'store'       , type = str   ,  default = 'motor',               help = 'Simulation Mode, choose between [movement] [motor]'                                )
+
     parser.add_argument( '--target_idx'  , action = 'store'       , type = int   ,  default = 1,                     help = 'Index of Target 1~6'                                                               )
 
     parser.add_argument( '--print_freq'  , action = 'store'       , type = int   ,  default = 60      ,              help = 'Specifying the frequency of printing the data.'                                    )
