@@ -47,8 +47,11 @@
         <geom name='geom3' type='sphere' pos='1 0 0' material='JointColor' size='0.16' mass='0'/>        
         <site name="site_end_effector" pos='1 0 0'/>
       </body>
-  </body>
+    </body>
 
+    <body name="body_obstacle" pos="0 1.2 0" euler='0 0 0'>
+      <geom name='geom_obstacle' type='box' pos='0 0 0' material='JointColor' size='0.1 0.1 0.1' mass='1'/>
+    </body>
 
   </worldbody>
 

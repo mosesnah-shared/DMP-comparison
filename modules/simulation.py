@@ -234,6 +234,13 @@ class Simulation:
                 self.obj_val = self.obj.output_calc( self.mj_model, self.mj_data, self.args )
                 self.obj_arr[ self.n_steps - 1 ] = self.obj_val 
 
+            # [2022.12.11] 
+            # Warning: This is an ad-hoc code which should be improved in the future 
+            if self.t >= 2 and self.t <= 3 and "obstacle" in self.model_name:
+                # Move the obstacle to a new position 
+                self.mj_model.body_pos[ self.mj_model.body_name2id( "body_obstacle") ] -= np.array( [ 0.0005, 0.0, 0.0] )
+                
+
             # Print the camera positions
             # print( self.mj_viewer.cam.lookat[ 0 ], self.mj_viewer.cam.lookat[ 1 ], self.mj_viewer.cam.lookat[ 2 ],  self.mj_viewer.cam.distance , self.mj_viewer.cam.elevation, self.mj_viewer.cam.azimuth  )
             # Print the basic data
