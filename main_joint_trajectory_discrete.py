@@ -91,7 +91,7 @@ def run_movement_primitives( my_sim ):
     # The parameters of min-jerk-traj
     q0i = np.zeros( nq )
     q0f =  np.ones( nq )
-    D   = 3.0
+    D   = 2.0
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D        
@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     # Set the camera position of the simulation
     # Lookat [3] Distance, Elevation, Azimuth
-    args.cam_pos = np.array( [ 0.3, 0.6, 0, 4, -90, 90 ] )
+    args.cam_pos = np.array( [ 0.3, 0.8, 0, 4, -90, 90 ] )
 
     my_sim = Simulation( args )    
 
