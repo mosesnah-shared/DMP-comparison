@@ -500,7 +500,7 @@ class DMPTaskController2DOF( Controller ):
         self.names_ctrl_pars = ( "p_command", "dp_command", "ddp_command"  )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp", "J", "dJ"  )
+        self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp", "J", "dJ" , "q_actual", "dq_actual", "ddq_actual" )
 
         # Generate an empty lists names of parameters
         self.init( )
@@ -539,14 +539,17 @@ class DMPTaskController2DOF( Controller ):
         
         # The joint positions
         self.q   = np.array( [ q1, q2 ] )
+        self.q_actual = np.copy( self.mj_data.qpos[ :self.n_act ])
 
         # The joint velocities
         self.J   = get2DOF_J( self.q )
         self.dq  = np.linalg.inv( self.J ) @ self.dp_command[ :2, n ]
+        self.dq_actual = np.copy( self.mj_data.qvel[ :self.n_act ])
 
         # The joint accelerations
         self.dJ = get2DOF_dJ( self.q, self.dq )
         self.ddq = np.linalg.inv( self.J ) @ ( self.ddp_command[ :2, n ] - self.dJ @ self.dq )
+        self.ddq_actual = np.copy( self.mj_data.qacc[ :self.n_act ])
 
         # The torque array
         self.tau = get2DOF_M( self.q ) @ self.ddq + get2DOF_C( self.q, self.dq ) @ self.dq
