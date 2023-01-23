@@ -18,7 +18,7 @@ import numpy as np
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
 
 from simulation   import Simulation
-from controllers  import CartesianImpedanceController, CartesianImpedanceControllerObstacle, DMPTaskController2DOF
+from controllers  import CartesianImpedanceController, DMPTaskController2DOF, CartesianImpedanceControllerModulated
 from utils        import min_jerk_traj
 from constants    import my_parser
 
@@ -43,7 +43,7 @@ def run_movement_primitives( my_sim ):
 
     # Set initial condition of the simulation
     q0 = np.pi/12
-    init_cond = { "qpos": np.array( [ q0, np.pi - 2*q0 - 0.02 ] ),  "qvel": np.zeros( nq ) }
+    init_cond = { "qpos": np.array( [ q0, np.pi - 2*q0 ] ),  "qvel": np.zeros( nq ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Define the canonical system
@@ -116,12 +116,27 @@ def run_movement_primitives( my_sim ):
     # Add the controller to the simulation
     my_sim.add_ctrl( dmp_ctrl )
 
+    # Also superimpose an impedance (PD) controller on the DMP controller
+    # Turn on/off the flag
+    is_superimpose = True
+    
+    if is_superimpose:
+
+        motor_ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
+        motor_ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = D1, ti = args.start_time  )    
+        motor_ctrl.set_impedance( Kx = 30 * np.eye( 3 ), Bx = 10 * np.eye( 3 ) )
+
+        my_sim.add_ctrl( motor_ctrl )
+
     # Run the simulation
     my_sim.run( )
 
     if args.is_save_data or args.is_record_vid:  
         for i in range( nq ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
+
+    if is_superimpose:
+        if args.is_save_data: motor_ctrl.export_data( my_sim.tmp_dir )
 
     my_sim.close( )
 
@@ -131,15 +146,20 @@ def run_motor_primitives( my_sim  ):
     # Set the initial condition of the 2DOF robot
     n = my_sim.n_act
     q1 = np.pi * 1/12
-    init_cond = { "qpos": np.array( [ q1, np.pi-2*q1- 0.02] ) ,  "qvel": np.zeros( n ) }
+    init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # The initial/final posture of the robot
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     p0f = p0i + np.array( [ 0.0, 1.2, 0.0 ] )
 
-    # Define the Task-space controller and repeller
-    ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
+    is_lambda = True
+    
+    if is_lambda:
+        ctrl = CartesianImpedanceControllerModulated( my_sim, args, name = "task_imp_modulated", Lmax = 1 )
+    else:        
+        ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
+
     ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = 3.0, ti = args.start_time  )    
     ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
 
