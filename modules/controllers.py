@@ -429,6 +429,94 @@ class CartesianImpedanceControllerObstacle( ImpedanceController ):
         self.init( )
         self.n_movs = 0 
 
+class CartesianImpedanceControllerModulated( CartesianImpedanceController ):
+    
+    def __init__( self, mj_sim, mj_args, name, Lmax ):
+
+        super( ).__init__( mj_sim, mj_args, name )
+
+        # The name of the controller parameters 
+        self.names_ctrl_pars = ( "Kx", "Bx", "x0i", "x0f", "D", "ti", "amps", "omegas", "offsets", "centers", "Lmax" )
+
+        # The name of variables that will be saved 
+        self.names_data = ( "t", "tau", "q", "dq", "J", "x0", "dx0", "xEE", "dxEE", "pot", "kin", "my_lambda" )
+
+        # The lambda function used for the controller 
+        # lambda is already reserved for python
+        self.my_lambda = 0
+
+        # Generate an empty lists names of parameters
+        self.init( )
+        
+        # Lmax is the maximum allowed energy of the controller 
+        self.Lmax = Lmax
+
+    def input_calc( self, t ):
+        """
+            Descriptions
+            ------------
+                We Modified the Cartesian Controller
+
+            Arguments
+            ---------
+                t: The current time of the simulation. 
+        """
+
+        assert self.Kx is not None and self.Bx is not None
+        assert self.n_movs >= 1
+
+        # Save the current time 
+        self.t = t 
+
+        # Get the current angular position and velocity of the robot arm only
+        self.q  = np.copy( self.mj_data.qpos[ : self.n_act ] )
+        self.dq = np.copy( self.mj_data.qvel[ : self.n_act ] )
+
+        # Get the Jacobian of the end-effector
+        # The Jacobian is 3-by-nq, although we only need the first two components
+        self.J    = np.copy( self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
+
+        # Get the end-effector trajectories
+        self.xEE  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dxEE = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
+ 
+        # The zero-force traejctory (3D)
+        self.x0  = np.zeros( 3 )
+        self.dx0 = np.zeros( 3 )
+
+        for i in range( self.n_movs ):
+            for j in range( 3 ):
+                tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+
+                self.x0[ j ]  += tmp_x0 
+                self.dx0[ j ] += tmp_dx0
+
+        # Calculate lambda here!
+        # For this, we need to calculate the energy of the robot
+        # The elastic energy from the 
+
+        nq = self.mj_sim.nq
+        Mtmp = np.zeros( nq * nq )
+        functions.mj_fullM( self.mj_sim.mj_model, Mtmp, self.mj_sim.mj_data.qM )
+        M = np.copy( Mtmp.reshape( nq, -1 ) )
+
+        # Potential and Kinetic energy
+        self.pot = 1/2 * ( self.x0 - self.xEE ).T @ self.Kx @ ( self.x0 - self.xEE )
+        self.kin = 1/2 * self.dq.T @ M @ self.dq
+        self.Lc = self.pot + self.kin
+
+        self.my_lambda = 1 if self.Lc <= self.Lmax else max( 0, 1/self.pot * ( self.Lmax - self.kin ) )
+
+        self.tau  = self.J.T @ ( self.Kx @ ( self.x0 - self.xEE ) + self.Bx @ (self.dx0 - self.dxEE ) )
+        self.tau *= self.my_lambda
+
+        if self.mj_args.is_save_data: self.save_data( )
+
+        #     (1) index array       (3) The tau value
+        return  np.arange( self.n_act ), self.tau
+
+
+
 # ============================================================ #
 # ============= Dynamic Movement Primitives ================== #
 # ============================================================ #
