@@ -239,6 +239,7 @@ class Simulation:
             if self.t >= 2 and self.t <= 3 and "obstacle" in self.model_name:
                 # Move the obstacle to a new position 
                 self.mj_model.body_pos[ self.mj_model.body_name2id( "body_obstacle") ] -= np.array( [ 0.0005, 0.0, 0.0] )
+                # self.mj_model.body_pos[ self.mj_model.body_name2id( "body_obstacle") ] -= np.array( [ 1, 0.0, 0.0] )
                 
 
             # Print the camera positions

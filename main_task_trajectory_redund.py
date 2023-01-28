@@ -161,6 +161,8 @@ def run_movement_primitives( my_sim ):
     if args.is_save_data or args.is_record_vid:  
         for i in range( 2 ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
+            
+        dmp_ctrl.export_data( my_sim.tmp_dir )
 
     my_sim.close( )
 
