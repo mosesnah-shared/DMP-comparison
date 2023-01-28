@@ -27,7 +27,6 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "DMPmodules" ) )
 
 from CanonicalSystem            import CanonicalSystem 
 from DynamicMovementPrimitives  import DynamicMovementPrimitives
-from InverseDynamicsModel       import get2DOF_M, get2DOF_C
 
 # Setting the numpy print options, useful for printing out data with consistent pattern.
 np.set_printoptions( linewidth = np.nan, suppress = True, precision = 4 )       
@@ -81,11 +80,11 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 20
+    N = 10
 
     # Iterating over the number of joints to each attach DMP
     for i in range( nq ): 
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp_joint" + str( i ), cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp_joint" + str( i + 1 ), cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
         dmp_list.append( dmp )
 
     # The parameters of min-jerk-traj
@@ -133,8 +132,8 @@ def run_movement_primitives( my_sim ):
 
         dmp = dmp_list[ i ]
 
-        # y, z, dy, dz
-        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( q0i[ i ], 0, q0f[ i ], dt, args.start_time, N_sim )
+        # t, y, z, dy, dz
+        t_arr, y_arr, _, dy_arr, dz_arr = dmp.integrate( q0i[ i ], 0, q0f[ i ], dt, args.start_time, N_sim )
 
         q_command[   i, : ] =   y_arr
         dq_command[  i, : ] =  dy_arr

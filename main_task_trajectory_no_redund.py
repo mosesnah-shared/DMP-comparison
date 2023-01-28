@@ -37,7 +37,7 @@ def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
 
     # The number of actuators
     n = my_sim.n_act
@@ -48,10 +48,10 @@ def run_motor_primitives( my_sim ):
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Get the initial end-effector position, and 8 targets in total
-    xEEi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     idx = args.target_idx
-    xEEf = xEEi + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
-    ctrl.add_mov_pars( x0i = xEEi, x0f = xEEf, D = 1, ti = args.start_time  )    
+    pi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
+    pf = pi + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
+    ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 1., ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
@@ -140,7 +140,7 @@ def run_movement_primitives( my_sim ):
         dmp = dmp_list[ i ]
 
         # y, z, dy, dz
-        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, args.start_time, N_sim )
+        t_arr, y_arr, _, dy_arr, dz_arr = dmp.integrate( p0i[ i ], 0, p0f[ i ], dt, args.start_time, N_sim )
 
         p_command[   i, : ] =   y_arr
         dp_command[  i, : ] =  dy_arr

@@ -72,9 +72,10 @@ class Controller:
         file_name = dir_name + "/ctrl_" + self.name + ".mat"
         
         # Packing up the arrays as a dictionary
-        dict1 = { name + "_arr": getattr( self, name + "_arr" ) for name in self.names_data      }
+        # For the data, we simply take the transpose
+        dict1 = { name + "_arr": np.transpose( getattr( self, name + "_arr" ) ) for name in self.names_data      }
         dict2 = { name: getattr( self, name )                   for name in self.names_ctrl_pars }
-        
+
         scipy.io.savemat( file_name, { **dict1, **dict2 } )
 
     def input_calc( self, t ):
@@ -219,6 +220,8 @@ class JointImpedanceController( ImpedanceController ):
         tau_imp   = self.Kq @ ( self.q0 - self.q ) + self.Bq @ ( self.dq0 - self.dq )
         self.tau  = tau_imp
 
+        if self.mj_args.is_save_data: self.save_data( )
+
         #     (1) index array       (3) The tau value
         return  np.arange( self.n_act ), self.tau
 
@@ -237,10 +240,10 @@ class CartesianImpedanceController( ImpedanceController ):
         super( ).__init__( mj_sim, mj_args, name )
 
         # The name of the controller parameters 
-        self.names_ctrl_pars = ( "Kx", "Bx", "x0i", "x0f", "D", "ti", "amps", "omegas", "offsets", "centers" )
+        self.names_ctrl_pars = ( "Kp", "Bp", "p0i", "p0f", "D", "ti", "amps", "omegas", "offsets", "centers" )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "dq", "J", "x0", "dx0", "xEE", "dxEE" )
+        self.names_data = ( "t", "tau", "q", "dq", "J", "p0", "dp0", "p", "dp" )
 
         # Generate an empty lists names of parameters
         self.init( )
@@ -251,25 +254,25 @@ class CartesianImpedanceController( ImpedanceController ):
         # Set rhythmic movement as false
         self.n_movs_rhythmic = 0
 
-    def set_impedance( self, Kx: np.ndarray, Bx:np.ndarray ):
+    def set_impedance( self, Kp: np.ndarray, Bp:np.ndarray ):
 
         # Regardless of planar/spatial robot, DOF = 3
-        assert len( Kx      ) == 3 and len( Bx      ) == 3
-        assert len( Kx[ 0 ] ) == 3 and len( Bx[ 0 ] ) == 3
+        assert len( Kp      ) == 3 and len( Bp      ) == 3
+        assert len( Kp[ 0 ] ) == 3 and len( Bp[ 0 ] ) == 3
 
-        self.Kx = Kx
-        self.Bx = Bx 
+        self.Kp = Kp
+        self.Bp = Bp 
 
-    def add_mov_pars( self, x0i : np.ndarray, x0f: np.ndarray, D:float, ti: float ):
+    def add_mov_pars( self, p0i : np.ndarray, p0f: np.ndarray, D:float, ti: float ):
 
         # Make sure the given input is 3 dimension
         # For Planar robot, all we need is 2, but for generalization.
-        assert len( x0i ) == 3 and len( x0f ) == 3
+        assert len( p0i ) == 3 and len( p0f ) == 3
         assert D > 0 and ti >= 0
 
         # If done, append the mov_parameters
-        self.x0i.append( x0i )
-        self.x0f.append( x0f )
+        self.p0i.append( p0i )
+        self.p0f.append( p0f )
         self.D.append(     D )
         self.ti.append(   ti )
 
@@ -291,7 +294,7 @@ class CartesianImpedanceController( ImpedanceController ):
                 We implement the controller. 
                 The controller generates torque with the following equation 
 
-                tau = J^T( Kx( x0 - L(q) ) + Bx( dx0 - Jdq )  )
+                tau = J^T( Kp( p0 - L(q) ) + Bp( dp0 - Jdq )  )
 
                 L(q) is the forward kinematics map of the end-effector
 
@@ -299,7 +302,7 @@ class CartesianImpedanceController( ImpedanceController ):
             ---------
                 t: The current time of the simulation. 
         """
-        assert self.Kx is not None and self.Bx is not None
+        assert self.Kp is not None and self.Bp is not None
         assert self.n_movs >= 1 or self.n_movs_rhythmic >= 1
 
         # Save the current time 
@@ -314,32 +317,32 @@ class CartesianImpedanceController( ImpedanceController ):
         self.J    = np.copy( self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
 
         # Get the end-effector trajectories
-        self.xEE  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
-        self.dxEE = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
+        self.p  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
  
         # The zero-force traejctory (3D)
-        self.x0  = np.zeros( 3 )
-        self.dx0 = np.zeros( 3 )
+        self.p0  = np.zeros( 3 )
+        self.dp0 = np.zeros( 3 )
 
         if self.n_movs != 0:
             for i in range( self.n_movs ):
                 for j in range( 3 ):
-                    tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+                    tmp_p0, tmp_dp0, _ = min_jerk_traj( t, self.ti[ i ], self.p0i[ i ][ j ], self.p0f[ i ][ j ], self.D[ i ] )
 
-                    self.x0[ j ]  += tmp_x0 
-                    self.dx0[ j ] += tmp_dx0
+                    self.p0[ j ]  += tmp_p0 
+                    self.dp0[ j ] += tmp_dp0
 
         if self.n_movs_rhythmic != 0:
             for i in range( self.n_movs_rhythmic ):
-                self.x0[ 0 ] += self.centers[ i ][ 0 ] + self.amps[ i ] * np.sin( self.omegas[ i ] * t )
-                self.x0[ 1 ] += self.centers[ i ][ 1 ] + self.amps[ i ] * np.cos( self.omegas[ i ] * t )
-                self.x0[ 2 ] += 0
+                self.p0[ 0 ] += self.centers[ i ][ 0 ] + self.amps[ i ] * np.sin( self.omegas[ i ] * t )
+                self.p0[ 1 ] += self.centers[ i ][ 1 ] + self.amps[ i ] * np.cos( self.omegas[ i ] * t )
+                self.p0[ 2 ] += 0
 
-                self.dx0[ 0 ] +=   self.amps[ i ] * self.omegas[ i ] * np.cos( self.omegas[ i ] * t )
-                self.dx0[ 1 ] += - self.amps[ i ] * self.omegas[ i ] * np.sin( self.omegas[ i ] * t )
-                self.dx0[ 2 ] += 0
+                self.dp0[ 0 ] +=   self.amps[ i ] * self.omegas[ i ] * np.cos( self.omegas[ i ] * t )
+                self.dp0[ 1 ] += - self.amps[ i ] * self.omegas[ i ] * np.sin( self.omegas[ i ] * t )
+                self.dp0[ 2 ] += 0
 
-        self.tau  = self.J.T @ ( self.Kx @ ( self.x0 - self.xEE ) + self.Bx @ (self.dx0 - self.dxEE ) )
+        self.tau  = self.J.T @ ( self.Kp @ ( self.p0 - self.p ) + self.Bp @ (self.dp0 - self.dp ) )
 
         if self.mj_args.is_save_data: self.save_data( )
 
@@ -701,8 +704,8 @@ class DMPTaskController5DOF( Controller ):
         self.dJ   = get5DOF_dJ( self.q, self.dq )
 
         # Define the reference p trajectory 
-        self.dpr  =  self.dp_command[ :, n ] + 80 * np.eye( 3 ) @ (  self.p_command[ :, n ] - self.p  )
-        self.ddpr = self.ddp_command[ :, n ] + 80 * np.eye( 3 ) @ ( self.dp_command[ :, n ] - self.dp )
+        self.dpr  =  self.dp_command[ :, n ] + 1 * np.eye( 3 ) @ (  self.p_command[ :, n ] - self.p  )
+        self.ddpr = self.ddp_command[ :, n ] + 1 * np.eye( 3 ) @ ( self.dp_command[ :, n ] - self.dp )
 
         # The dq/ddq reference trajectory 
         self.dqr  = jac_pinv @ self.dpr 
@@ -715,7 +718,7 @@ class DMPTaskController5DOF( Controller ):
         self.M = np.copy( Mtmp.reshape( nq, -1 ) )
         self.C = get5DOF_C( self.q, self.dq )
 
-        self.tau = self.M @ self.ddqr + self.C @ self.dqr - 100 * np.eye( nq ) @ ( self.dq - self.dqr )
+        self.tau = self.M @ self.ddqr + self.C @ self.dqr - 10 * np.eye( nq ) @ ( self.dq - self.dqr )
 
         if self.mj_args.is_save_data: self.save_data( )
 

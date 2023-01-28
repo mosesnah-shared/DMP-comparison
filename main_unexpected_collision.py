@@ -124,7 +124,7 @@ def run_movement_primitives( my_sim ):
 
         motor_ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
         motor_ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = D1, ti = args.start_time  )    
-        motor_ctrl.set_impedance( Kx = 30 * np.eye( 3 ), Bx = 10 * np.eye( 3 ) )
+        motor_ctrl.set_impedance( Kx = 12 * np.eye( 3 ), Bx = 4 * np.eye( 3 ) )
 
         my_sim.add_ctrl( motor_ctrl )
 
@@ -156,7 +156,7 @@ def run_motor_primitives( my_sim  ):
     is_lambda = True
     
     if is_lambda:
-        ctrl = CartesianImpedanceControllerModulated( my_sim, args, name = "task_imp_modulated", Lmax = 1 )
+        ctrl = CartesianImpedanceControllerModulated( my_sim, args, name = "task_imp_modulated", Lmax = 0.5 )
     else:        
         ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
@@ -180,6 +180,7 @@ if __name__ == "__main__":
     args, unknown = parser.parse_known_args( )
 
     args.model_name = "2DOF_planar_torque_w_obstacle"
+    # args.model_name = "2DOF_planar_torque"
     my_sim = Simulation( args )
 
     assert args.sim_type in [    "motor", "movement" ]
