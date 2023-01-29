@@ -175,8 +175,8 @@ def run_motor_primitives( my_sim  ):
 
     # Define the Task-space controller and repeller
     ctrl1 = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 3.0, ti = args.start_time  )    
-    ctrl1.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl1.add_mov_pars( p0i = p0i, p0f = p0f, D = 3.0, ti = args.start_time  )    
+    ctrl1.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
 
     ctrl2 = CartesianImpedanceControllerObstacle( my_sim, args, name = "task_imp2", obs_pos = o )
     ctrl2.set_impedance( k = 0.1 )

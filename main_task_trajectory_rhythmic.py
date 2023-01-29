@@ -40,7 +40,7 @@ def run_motor_primitives( my_sim ):
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
     # The joint stiffness and damping matrices
-    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
 
     # The parameters of the rhythmic controller
     r, omega0, c = 0.5, np.pi, np.sqrt( 2 )
@@ -59,7 +59,8 @@ def run_motor_primitives( my_sim ):
     # Run the simulation
     my_sim.run( )
 
-    if args.is_save_data or args.is_record_vid:  ctrl.export_data( my_sim.tmp_dir )
+    if args.is_save_data or args.is_record_vid: 
+        ctrl.export_data( my_sim.tmp_dir )
 
     my_sim.close( )
 
@@ -93,7 +94,6 @@ def run_movement_primitives( my_sim ):
     dt = Tp/P    
     t_des  = dt * np.arange( P + 1 )
     cs.tau = Tp/(2*np.pi)
-
 
     # The P samples points of p_des, dp_des, ddp_dex
     p_des   = np.zeros( ( 2, P + 1 ) )
@@ -129,7 +129,7 @@ def run_movement_primitives( my_sim ):
     for i in range( 2 ):
 
         dmp = dmp_list[ i ]
-        t_arr, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( p_des[ i, 0 ], dp_des[ i, 0 ], ttmp[ i ], dt, 0, N_sim )
+        _, y_arr, _, dy_arr, dz_arr = dmp.integrate( p_des[ i, 0 ], dp_des[ i, 0 ], ttmp[ i ], dt, 0, N_sim )
 
         p_command[   i, : ] =   y_arr
         dp_command[  i, : ] =  dy_arr
@@ -174,19 +174,15 @@ if __name__ == "__main__":
     parser = my_parser( )
     args, unknown = parser.parse_known_args( )
 
-    # Define the type of movement and its control method
-    args.sim_type = "movement"
-
     assert args.sim_type in [ "motor", "movement" ]
 
     # Define the robot that we will use 
     args.model_name = "2DOF_planar_torque"
+    my_sim = Simulation( args )    
 
     # Set the camera position of the simulation
     # Lookat [3] Distance, Elevation, Azimuth
     args.cam_pos = np.array( [ 0.3, 0.6, 0, 4, -90, 90 ] )
-
-    my_sim = Simulation( args )    
 
     if    args.sim_type == "motor"   :    run_motor_primitives( my_sim )
     elif  args.sim_type == "movement": run_movement_primitives( my_sim )

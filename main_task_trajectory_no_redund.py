@@ -79,7 +79,7 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 10
+    N = 20
 
     # The x and y coordinates. 
     tmp_str = [ "x", "y" ]
