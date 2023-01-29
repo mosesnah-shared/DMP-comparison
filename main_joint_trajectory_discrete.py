@@ -80,7 +80,7 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 10
+    N = 20
 
     # Iterating over the number of joints to each attach DMP
     for i in range( nq ): 

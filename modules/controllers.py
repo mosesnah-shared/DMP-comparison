@@ -76,6 +76,7 @@ class Controller:
         dict1 = { name + "_arr": np.transpose( getattr( self, name + "_arr" ) ) for name in self.names_data      }
         dict2 = { name: getattr( self, name )                   for name in self.names_ctrl_pars }
 
+
         scipy.io.savemat( file_name, { **dict1, **dict2 } )
 
     def input_calc( self, t ):
@@ -704,8 +705,8 @@ class DMPTaskController5DOF( Controller ):
         self.dJ   = get5DOF_dJ( self.q, self.dq )
 
         # Define the reference p trajectory 
-        self.dpr  =  self.dp_command[ :, n ] + 1 * np.eye( 3 ) @ (  self.p_command[ :, n ] - self.p  )
-        self.ddpr = self.ddp_command[ :, n ] + 1 * np.eye( 3 ) @ ( self.dp_command[ :, n ] - self.dp )
+        self.dpr  =  self.dp_command[ :, n ] + 80 * np.eye( 3 ) @ (  self.p_command[ :, n ] - self.p  )
+        self.ddpr = self.ddp_command[ :, n ] + 80 * np.eye( 3 ) @ ( self.dp_command[ :, n ] - self.dp )
 
         # The dq/ddq reference trajectory 
         self.dqr  = jac_pinv @ self.dpr 
@@ -718,7 +719,7 @@ class DMPTaskController5DOF( Controller ):
         self.M = np.copy( Mtmp.reshape( nq, -1 ) )
         self.C = get5DOF_C( self.q, self.dq )
 
-        self.tau = self.M @ self.ddqr + self.C @ self.dqr - 10 * np.eye( nq ) @ ( self.dq - self.dqr )
+        self.tau = self.M @ self.ddqr + self.C @ self.dqr - 100 * np.eye( nq ) @ ( self.dq - self.dqr )
 
         if self.mj_args.is_save_data: self.save_data( )
 

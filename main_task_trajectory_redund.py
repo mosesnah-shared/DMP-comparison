@@ -41,7 +41,7 @@ def run_motor_primitives( my_sim ):
     ctrl2 =     JointImpedanceController( my_sim, args, name = "joint_imp" )
 
     # The values of the impedances 
-    ctrl1.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl1.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
     ctrl2.set_impedance( Kq =   0 * np.eye( n ), Bq =  30 * np.eye( n ) )
 
     # Superposition of mechanical impedances
@@ -55,12 +55,12 @@ def run_motor_primitives( my_sim ):
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Get the initial/final end-effector position of the robot 
-    p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+    p0i = np.copy( my_sim.mj_data.get_site_xpos( "site_end_effector" ) )
     p0f = p0i + np.array( [ 3.0, 0, 0 ] )
 
     # Adding the reference trajectories
     # For the joint impedances, the reference posture remains stationary.
-    ctrl1.add_mov_pars( x0i = p0i, x0f = p0f, D = 2, ti = args.start_time  )    
+    ctrl1.add_mov_pars( p0i = p0i, p0f = p0f, D = 2, ti = args.start_time  )    
     ctrl2.add_mov_pars( q0i = ref_pos, q0f = ref_pos, D = 2, ti = 0 )    
 
     # Run the simulation
@@ -78,9 +78,6 @@ def run_movement_primitives( my_sim ):
     # Define the canonical system
     cs = CanonicalSystem( mov_type = "discrete" )
 
-    # The number of degrees of freedom of the tobot 
-    nq = my_sim.nq
-
     # The time step of the simulation 
     dt = my_sim.dt
 
@@ -97,13 +94,13 @@ def run_movement_primitives( my_sim ):
         dmp_list.append( dmp )
         
     # Set the initial posture of the robot
-    q1 = 0
+    q1 = 0.0
     ref_pos = np.array( [ q1, np.pi/2 - q1, 0, 0, np.pi/2-q1 ] )
-    init_cond = { "qpos": ref_pos ,  "qvel": np.zeros( len( ref_pos ) ) }
+    init_cond = { "qpos": ref_pos,  "qvel": np.zeros( len( ref_pos ) ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Get the initial/final end-effector position 
-    p0i = my_sim.mj_data.get_site_xpos( "site_end_effector" )
+    p0i = np.copy( my_sim.mj_data.get_site_xpos( "site_end_effector" ) )
     p0f = p0i + np.array( [ 3.0, 0, 0 ] )
     D   = 2.0       
 

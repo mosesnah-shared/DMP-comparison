@@ -33,7 +33,6 @@ from simulation   import Simulation
 from controllers  import CartesianImpedanceController, DMPTaskController2DOF
 from utils        import min_jerk_traj
 from constants    import my_parser
-from constants    import Constants as C
 
 # ======================================================================== #
 # ======================================================================== #
@@ -64,13 +63,9 @@ def run_motor_primitives( my_sim ):
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     p0f = p0i + np.array( [ -0.7, 0.7, 0. ] )
 
-    # The stiffness/damping matrices
-    Kx = 300 * np.eye( 3 )
-    Bx = 100 * np.eye( 3 )
-
     # Define the controller 
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )    
+    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )    
 
     # The movement durations of the submovements
     D1, D2 = 1.0, 1.0
@@ -81,8 +76,8 @@ def run_motor_primitives( my_sim ):
     # The new goal position 
     g_new = p0f + np.array( [ 1.5, 0.5, 0. ] )
 
-    ctrl.add_mov_pars( x0i =           p0i, x0f =         p0f, D = D1, ti = args.start_time        )    
-    ctrl.add_mov_pars( x0i = np.zeros( 3 ), x0f = g_new - p0f, D = D2, ti = args.start_time + D1/2 )    
+    ctrl.add_mov_pars( p0i =           p0i, p0f =         p0f, D = D1, ti = args.start_time        )    
+    ctrl.add_mov_pars( p0i = np.zeros( 3 ), p0f = g_new - p0f, D = D2, ti = args.start_time + D1/2 )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
