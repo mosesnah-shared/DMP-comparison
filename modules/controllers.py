@@ -440,10 +440,10 @@ class CartesianImpedanceControllerModulated( CartesianImpedanceController ):
         super( ).__init__( mj_sim, mj_args, name )
 
         # The name of the controller parameters 
-        self.names_ctrl_pars = ( "Kx", "Bx", "x0i", "x0f", "D", "ti", "amps", "omegas", "offsets", "centers", "Lmax" )
+        self.names_ctrl_pars = ( "Kp", "Bp", "p0i", "p0f", "D", "ti", "amps", "omegas", "offsets", "centers", "Lmax" )
 
         # The name of variables that will be saved 
-        self.names_data = ( "t", "tau", "q", "dq", "J", "x0", "dx0", "xEE", "dxEE", "pot", "kin", "my_lambda" )
+        self.names_data = ( "t", "tau", "q", "dq", "J", "p0", "dp0", "p", "dp", "pot", "kin", "my_lambda" )
 
         # The lambda function used for the controller 
         # lambda is already reserved for python
@@ -466,7 +466,7 @@ class CartesianImpedanceControllerModulated( CartesianImpedanceController ):
                 t: The current time of the simulation. 
         """
 
-        assert self.Kx is not None and self.Bx is not None
+        assert self.Kp is not None and self.Bp is not None
         assert self.n_movs >= 1
 
         # Save the current time 
@@ -481,19 +481,19 @@ class CartesianImpedanceControllerModulated( CartesianImpedanceController ):
         self.J    = np.copy( self.mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
 
         # Get the end-effector trajectories
-        self.xEE  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
-        self.dxEE = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
+        self.p  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
+        self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
  
         # The zero-force traejctory (3D)
-        self.x0  = np.zeros( 3 )
-        self.dx0 = np.zeros( 3 )
+        self.p0  = np.zeros( 3 )
+        self.dp0 = np.zeros( 3 )
 
         for i in range( self.n_movs ):
             for j in range( 3 ):
-                tmp_x0, tmp_dx0, _ = min_jerk_traj( t, self.ti[ i ], self.x0i[ i ][ j ], self.x0f[ i ][ j ], self.D[ i ] )
+                tmp_p0, tmp_dp0, _ = min_jerk_traj( t, self.ti[ i ], self.p0i[ i ][ j ], self.p0f[ i ][ j ], self.D[ i ] )
 
-                self.x0[ j ]  += tmp_x0 
-                self.dx0[ j ] += tmp_dx0
+                self.p0[ j ]  += tmp_p0 
+                self.dp0[ j ] += tmp_dp0
 
         # Calculate lambda here!
         # For this, we need to calculate the energy of the robot
@@ -505,13 +505,13 @@ class CartesianImpedanceControllerModulated( CartesianImpedanceController ):
         M = np.copy( Mtmp.reshape( nq, -1 ) )
 
         # Potential and Kinetic energy
-        self.pot = 1/2 * ( self.x0 - self.xEE ).T @ self.Kx @ ( self.x0 - self.xEE )
+        self.pot = 1/2 * ( self.p0 - self.p ).T @ self.Kp @ ( self.p0 - self.p )
         self.kin = 1/2 * self.dq.T @ M @ self.dq
         self.Lc = self.pot + self.kin
 
         self.my_lambda = 1 if self.Lc <= self.Lmax else max( 0, 1/self.pot * ( self.Lmax - self.kin ) )
 
-        self.tau  = self.J.T @ ( self.Kx @ ( self.x0 - self.xEE ) + self.Bx @ (self.dx0 - self.dxEE ) )
+        self.tau  = self.J.T @ ( self.Kp @ ( self.p0 - self.p ) + self.Bp @ (self.dp0 - self.dp ) )
         self.tau *= self.my_lambda
 
         if self.mj_args.is_save_data: self.save_data( )

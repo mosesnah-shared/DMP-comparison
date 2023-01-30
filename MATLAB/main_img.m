@@ -593,7 +593,8 @@ mySaveFig( gcf,  'discrete_and_rhythmic' )
 
 %% ==================================================================
 %% (--) Obstacle Avoidance 
- 
+ clear data*; clc;
+
 % ============================ Movement Primitives ==================================== %
 % Dynamic Movement Primitives
 file_name1 = '../results/obstacle_avoidance/movement/ctrl_task_dmp.mat';
@@ -714,7 +715,9 @@ end
 mySaveFig( gcf, 'obstacle' )
 
 %% ==================================================================
-%% (--) Unexpected Contact
+%% (--) Unexpected Contact #1
+% All data generated from "main_unexpected_collision.py"
+clear data*; clc; close all;
 
 % ======================================================================== %
 % Dynamic Movement Primitives
@@ -723,18 +726,18 @@ file_name_mov_wo_obs1 = '../results/unexpected_contact/movement/without_obstacle
 file_name_mov_wo_obs2 = '../results/unexpected_contact/movement/without_obstacle/dmpy.mat';
 file_name_mov_wo_obs3 = '../results/unexpected_contact/movement/without_obstacle/ctrl_task_dmp.mat';
 
-data_raw_mov_wo_obs{ 1 } = load( file_name_mov_wo_obs1 );
-data_raw_mov_wo_obs{ 2 } = load( file_name_mov_wo_obs2 );
-data_raw_mov_wo_obs{ 3 } = load( file_name_mov_wo_obs3 );
+data_move_wo_obs{ 1 } = load( file_name_mov_wo_obs1 );
+data_move_wo_obs{ 2 } = load( file_name_mov_wo_obs2 );
+data_move_wo_obs{ 3 } = load( file_name_mov_wo_obs3 );
 
 % With_obstacle_no_PD
 file_name_mov_w_obs_woPD_1 = '../results/unexpected_contact/movement/with_obstacle_no_PD/dmpx.mat';
 file_name_mov_w_obs_woPD_2 = '../results/unexpected_contact/movement/with_obstacle_no_PD/dmpy.mat';
 file_name_mov_w_obs_woPD_3 = '../results/unexpected_contact/movement/with_obstacle_no_PD/ctrl_task_dmp.mat';
 
-data_raw_mov_w_obs_woPD{ 1 } = load( file_name_mov_w_obs_woPD_1 );
-data_raw_mov_w_obs_woPD{ 2 } = load( file_name_mov_w_obs_woPD_2 );
-data_raw_mov_w_obs_woPD{ 3 } = load( file_name_mov_w_obs_woPD_3 );
+data_move_w_obs_woPD{ 1 } = load( file_name_mov_w_obs_woPD_1 );
+data_move_w_obs_woPD{ 2 } = load( file_name_mov_w_obs_woPD_2 );
+data_move_w_obs_woPD{ 3 } = load( file_name_mov_w_obs_woPD_3 );
 
 % With obstacle PD
 file_name_mov_w_obs_wPD_1 = '../results/unexpected_contact/movement/with_obstacle_PD/dmpx.mat';
@@ -742,144 +745,395 @@ file_name_mov_w_obs_wPD_2 = '../results/unexpected_contact/movement/with_obstacl
 file_name_mov_w_obs_wPD_3 = '../results/unexpected_contact/movement/with_obstacle_PD/ctrl_task_dmp.mat';
 file_name_mov_w_obs_wPD_4 = '../results/unexpected_contact/movement/with_obstacle_PD/ctrl_task_imp.mat';
 
-data_raw_mov_w_obs_wPD{ 1 } = load( file_name_mov_w_obs_wPD_1 );
-data_raw_mov_w_obs_wPD{ 2 } = load( file_name_mov_w_obs_wPD_2 );
-data_raw_mov_w_obs_wPD{ 3 } = load( file_name_mov_w_obs_wPD_3 );
-data_raw_mov_w_obs_wPD{ 4 } = load( file_name_mov_w_obs_wPD_4 );
+data_move_w_obs_wPD{ 1 } = load( file_name_mov_w_obs_wPD_1 );
+data_move_w_obs_wPD{ 2 } = load( file_name_mov_w_obs_wPD_2 );
+data_move_w_obs_wPD{ 3 } = load( file_name_mov_w_obs_wPD_3 );
+data_move_w_obs_wPD{ 4 } = load( file_name_mov_w_obs_wPD_4 );
 
 % ======================================================================== %
 % Dynamic Motor Primitives
 % Without Obstacle
 file_name_motor_wo_obs = '../results/unexpected_contact/motor/without_obstacle/ctrl_task_imp.mat';
-data_raw_motor_wo_obs{ 1 } = load( file_name_motor_wo_obs );
+data_motor_wo_obs{ 1 } = load( file_name_motor_wo_obs );
 
 % With Obstacle no modulation
 file_name_motor_w_obs_wo_mod = '../results/unexpected_contact/motor/with_obstacle_no_mod/ctrl_task_imp.mat';
-data_raw_motor_w_obs_wo_mod{ 1 } = load( file_name_motor_w_obs_wo_mod );
+data_motor_w_obs_wo_mod{ 1 } = load( file_name_motor_w_obs_wo_mod );
 
 % With Obstacle modulation
 file_name_motor_w_obs_w_mod = '../results/unexpected_contact/motor/with_obstacle_mod_Lmax_0p5/ctrl_task_imp_modulated.mat';
-data_raw_motor_w_obs_w_mod{ 1 } = load( file_name_motor_w_obs_w_mod );
+data_motor_w_obs_w_mod{ 1 } = load( file_name_motor_w_obs_w_mod );
 
 clear file_name*
 
+start = data_motor_wo_obs{1}.p0i;
+goal = data_motor_wo_obs{1}.p0f;
+
 if mode == "MOVEMENT" || mode == "BOTH" 
     
-    subplot( 2, 4, 1)
     % Get the x, y position of the joints 
-    % Without obstacle 
-    q_mov_wo_obs = data_raw_mov_wo_obs{3}.q_actual_arr;
+    % =====================================================
+    % ==== SUBPLOT #1
+    % ==== Movement Primitives, Without obstacle 
+    subplot( 2, 4, 1 )
+    q_arr = data_move_wo_obs{3}.q_actual_arr;
+
     
     hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
     
-    q_tmp = cumsum( q_mov_wo_obs , 2 );
-    x_arr = cumsum( cos( q_tmp ), 2 );
-    y_arr = cumsum( sin( q_tmp ), 2 );    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
     
     alpha_arr = [0.2, 0.5, 1.0];
     idx_arr   = [100, 1700, 3500];
     for i = 1 : length( alpha_arr )
         idx = idx_arr( i );
         alpha = alpha_arr( i );
-        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
         p2.Color( 4 ) = alpha;
-        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
 
     end    
     
-%     title( 'Dynamic Movement Primitives', 'fontsize', 30 )
     axis equal    
-    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {} )
+    text( -1.5,1.8,'A')
     
     
-    % With Obstacle no modulation
-    subplot( 2, 4, 2)
+    ylabel( 'Y (m)', 'fontsize', 30 )
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )    
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.white, 'markeredgecolor', c.white, 'markerfacealpha', 0.3 )
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )
     
-    q_mov_w_obs_wo_PD = data_raw_mov_w_obs_woPD{3}.q_actual_arr;
+    % =====================================================
+    % ==== SUBPLOT #2    
+    subplot( 2, 4, 2 )
+    
+    q_arr = data_move_w_obs_woPD{3}.q_actual_arr;
     
     hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
     
-    q_tmp = cumsum( q_mov_w_obs_wo_PD , 2 );
-    x_arr = cumsum( cos( q_tmp ), 2 );
-    y_arr = cumsum( sin( q_tmp ), 2 );    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
     
     alpha_arr = [0.2, 0.5, 1.0];
     idx_arr   = [100, 1500, 2500];
     for i = 1 : length( alpha_arr )
         idx = idx_arr( i );
         alpha = alpha_arr( i );
-        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
         p2.Color( 4 ) = alpha;
-        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
 
     end    
     
     scatter( 0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
     
-%     title( 'Dynamic Movement Primitives', 'fontsize', 30 )
     axis equal        
-    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {} ,'yticklabel', {} )
+    text( -1.5,1.8,'B')
     
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )    
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )
+        
+    % =====================================================
+    % ==== SUBPLOT #3       
     % With Obstacle with PD, at hit
-    subplot( 2, 4, 3 )  
-    
-    q_mov_w_obs_wo_PD = data_raw_mov_w_obs_wPD{3}.q_actual_arr;
+    subplot( 2, 4, 3 )
+
     
     hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
     
-    q_tmp = cumsum( q_mov_w_obs_wo_PD , 2 );
-    x_arr = cumsum( cos( q_tmp ), 2 );
-    y_arr = cumsum( sin( q_tmp ), 2 );    
+    q_arr = data_move_w_obs_wPD{3}.q_actual_arr;
+    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );      
     
     alpha_arr = [0.2, 0.6];
     idx_arr   = [100, 1800];
     for i = 1 : length( alpha_arr )
         idx = idx_arr( i );
         alpha = alpha_arr( i );
-        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
         p2.Color( 4 ) = alpha;
-        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
 
-    end        
+    end    
     
     scatter( 0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
     
     
     axis equal        
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    text( -1.5,1.8,'C')
     
-    
-    
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )
+            
+    % =====================================================
+    % ==== SUBPLOT #4       
+    % With Obstacle with PD, at hit    
     subplot( 2, 4, 4 )
+
     hold on
-    
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black )     
     alpha_arr = [0.6, 1.0];
-    idx_arr   = [1800,3500];
+    idx_arr   = [1800, 6000];
     for i = 1 : length( alpha_arr )
         idx = idx_arr( i );
         alpha = alpha_arr( i );
-        scatter( [ 0, x_arr( idx, 1:end-1 ) ] , [ 0, y_arr( idx, 1:end-1) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-        p2 = plot( [ 0, x_arr( idx, : ) ] , [ 0, y_arr( idx, :) ], 'color', c.black, 'linewidth', 4 );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
         p2.Color( 4 ) = alpha;
-        scatter( x_arr( idx, end ), y_arr( idx, end ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
-
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
     end            
     
     scatter(  0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 0.2 ,'MarkerEdgeAlpha', 0.2 )    
     scatter( -0.6, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
 
+    annotation('textarrow', [0.82, 0.795], [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
+    annotation('textarrow', [0.705, 0.74], [0.77, 0.77], 'Linewidth',4, 'headstyle', 'vback1', 'headwidth', 15, 'color', [0.3, 0.3, 0.3]) 
     
+
     axis equal        
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    text( -1.5,1.8,'D')
     
-    subplot( 2, 4, [ 5,8] )
-    xlabel( 't (sec)' )
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )    
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.white, 'markeredgecolor', c.white, 'markerfacealpha', 0.3 )
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )    
+        
+
+    subplot( 2, 4, [5:8] )
+    hold on
     
+    plot( data_move_wo_obs{3}.t_arr, data_move_wo_obs{3}.p_arr( 2, : ), 'color', c.blue, 'linewidth', 5 )
+    plot( data_move_wo_obs{3}.t_arr, data_move_w_obs_woPD{3}.p_arr( 2, :), 'color', c.blue, 'linestyle', '--', 'linewidth', 5 )   
+    plot( data_move_w_obs_wPD{3}.t_arr, data_move_w_obs_wPD{3}.p_arr( 2, :), 'color', c.blue, 'linestyle', ':', 'linewidth', 5 )   
+    set( gca, 'xlim', [0, 4], 'ylim', [-0.5000,2.0000], 'ytick', [ start( 2 ), goal( 2 ) ], 'yticklabel', {'Start', 'Goal $\mathbf{g}$'}, ...
+                 'xtick', [ 0, 1.28, 2.35, 3, 4 ], 'xticklabel', { 0, 'Contact', 'Obstacle Removed', 3, 4 }, 'fontsize', 25 )
+    xline( 1.28, 'linewidth', 1, 'linestyle', '--');             
+    xline( 2.35, 'linewidth', 1, 'linestyle', '--');                 
+	yline( start(2), 'linewidth', 1, 'linestyle', '--');
+    yline(  goal(2), 'linewidth', 1, 'linestyle', '--' );
+    scatter( 1.28, 0.94, 300, 'o', 'markerfacecolor', 0.7*c.white, 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0, 'linewidth', 3 )    
     
-elseif mode == "MOTOR" || mode == "BOTH" 
+    xlabel( '$t$ (sec)', 'fontsize', 30 )
+    ylabel( 'Y (m)', 'fontsize', 30 )
+    text( 0.05,2.2,'E')
+    get( gca, 'ylim' )
+
+    legend( 'A', 'B', 'C,D', 'location', 'southwest' )
+    sgtitle( 'Dynamic Movement Primitives', 'fontsize', 30)
+
+    mySaveFig( gcf, 'unexpected_contact_movement' )
     
+end   
+    
+if mode == "MOTOR" || mode == "BOTH" 
+    figure( )
+    subplot( 2, 4, 1 )
+    
+    hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
+    
+    q_arr = data_motor_wo_obs{1}.q_arr;
+    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
+    
+    alpha_arr = [0.2, 0.5, 1.0];
+    idx_arr   = [100, 1700, 3500];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end    
+    
+    axis equal    
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {} )
+    text( -1.5,1.8,'A')
+    ylabel( 'Y (m)', 'fontsize', 30 )
+    
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )    
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.white, 'markeredgecolor', c.white, 'markerfacealpha', 0.3 )
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )    
+    
+    subplot( 2, 4, 2 )
+    
+    hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
+    
+    q_arr = data_motor_w_obs_wo_mod{1}.q_arr;
+    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
+    
+    alpha_arr = [0.2, 0.6];
+    idx_arr   = [100, 1800];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end    
+    
+    scatter( 0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )        
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )    
+    
+    axis equal    
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    text( -1.5,1.8,'B')    
+     
+    
+    subplot( 2, 4, 3 )
+    
+    hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
+    
+    q_arr = data_motor_w_obs_wo_mod{1}.q_arr;
+    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
+    
+    alpha_arr = [0.6, 0.8, 1.0];
+    idx_arr   = [1800, 2700, 5500];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end    
+    
+    scatter(  0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 0.2 ,'MarkerEdgeAlpha', 0.2 )    
+    scatter( -0.6, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.white, 'markeredgecolor', c.white, 'markerfacealpha', 0.3 )
+    
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )    
+    
+    axis equal    
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    text( -1.5,1.8,'C')    
+         
+    subplot( 2, 4, 4 )
+    
+    hold on
+    plot( [ start( 1 ), goal( 1 )], [ start(2), goal( 2 ) ], 'linestyle', '--', 'linewidth', 3, 'color', c.black ) 
+    
+    q_arr = data_motor_w_obs_w_mod{1}.q_arr;
+    
+    q_abs = cumsum( q_arr , 1 );
+    x_arr = cumsum( cos( q_abs ), 1 );
+    y_arr = cumsum( sin( q_abs ), 1 );    
+    
+    alpha_arr = [0.6, 0.8, 1.0];
+    idx_arr   = [1800, 3100, 5500];
+    for i = 1 : length( alpha_arr )
+        idx = idx_arr( i );
+        alpha = alpha_arr( i );
+        scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+        p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx) ], 'color', c.black, 'linewidth', 4 );
+        p2.Color( 4 ) = alpha;
+        scatter( x_arr( end, idx ), y_arr( end, idx ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+    end    
+    
+    scatter(  0.0, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 0.2 ,'MarkerEdgeAlpha', 0.2 )    
+    scatter( -0.6, 1.2, 1500, "square", 'markerfacecolor', [0.4, 0.4, 0.4], 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0 )    
+
+    scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )
+    scatter( goal( 1 ), goal( 2 ), 100, 'square', 'markerfacecolor', c.white, 'markeredgecolor', c.white, 'markerfacealpha', 0.3 )
+    
+    text( goal( 1 )-0.3, goal( 2 ) +0.02, '$\mathbf{g}$', 'fontsize', 20    )    
+        
+    
+    axis equal    
+    set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
+    text( -1.5,1.8,'D')    
+             
+    annotation('textarrow', [0.82, 0.795], [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
+    annotation('textarrow', [0.82, 0.795]-0.205, [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
+
+    
+    subplot( 2, 4, 5:8 )
+    hold on
+    
+    plot( data_motor_wo_obs{1}.t_arr, data_motor_wo_obs{1}.p_arr( 2, : ), 'color', c.orange, 'linewidth', 5 )
+    plot( data_motor_w_obs_wo_mod{1}.t_arr, data_motor_w_obs_wo_mod{1}.p_arr( 2, :), 'color', c.orange, 'linestyle', '--', 'linewidth', 5 )   
+    plot( data_motor_w_obs_w_mod{1}.t_arr, data_motor_w_obs_w_mod{1}.p_arr( 2, :), 'color', c.orange, 'linestyle', ':', 'linewidth', 5 )   
+    set( gca, 'xlim', [0, 6], 'ylim', [-0.5000,2.0000], 'ytick', [ start( 2 ), goal( 2 ) ], 'yticklabel', {'Start', 'Goal $\mathbf{g}$'}, ...
+                 'xtick', [ 0, 1.28, 2.35, 3, 4 ], 'xticklabel', { 0, 'Contact', 'Obstacle Removed', 3, 4 }, 'fontsize', 25 )
+    xline( 1.28, 'linewidth', 1, 'linestyle', '--');             
+    xline( 2.35, 'linewidth', 1, 'linestyle', '--');                 
+	yline( start(2), 'linewidth', 1, 'linestyle', '--');
+    yline(  goal(2), 'linewidth', 1, 'linestyle', '--' );
+    scatter( 1.28, 0.94, 300, 'o', 'markerfacecolor', 0.7*c.white, 'markeredgecolor', [0.4,0.4,0.4], 'MarkerFaceAlpha', 1.0 ,'MarkerEdgeAlpha', 1.0, 'linewidth', 3 )    
+    
+    xlabel( '$t$ (sec)', 'fontsize', 30 )
+    ylabel( 'Y (m)', 'fontsize', 30 )    
+
+    legend( 'A', 'B,C', 'B,D', 'location', 'southwest' )
+    sgtitle( 'Dynamic Motor Primitives', 'fontsize', 30)
+
+    mySaveFig( gcf, 'unexpected_contact_motor' )
+
 end
 
+%% (--) Unexpected Contact #2
+% All data generated from "main_unexpected_collision.py"
+close all; clc;
+% Plotting the lambda value multiplied on the 
+t_arr = data_motor_w_obs_w_mod{1}.t_arr;
+lambda = data_motor_w_obs_w_mod{1}.my_lambda_arr;
+
+U = data_motor_w_obs_w_mod{1}.pot_arr;
+K = data_motor_w_obs_w_mod{1}.kin_arr;
+
+subplot( 2, 1, 1 )
+hold on
+plot( t_arr, lambda, 'color', c.orange, 'linestyle', '-', 'linewidth', 5 )   
+set( gca, 'xlim', [0, 4], 'xtick', [ 0, 1.28, 2.35, 3, 4 ], 'xticklabel', { 0, 'Contact', 'Obstacle Removed', 3, 4 }, 'fontsize', 25, 'ytick', [0., 0.5, 1.0] )
+
+ylabel( '$\lambda$ (-)', 'fontsize', 30 )
+xline( 1.28, 'linewidth', 2, 'linestyle', '--');             
+xline( 2.35, 'linewidth', 2, 'linestyle', '--');   
+subplot( 2, 1, 2 )
+hold on
+
+plot( t_arr, U.*lambda + K, 'color', c.orange, 'linestyle', '-', 'linewidth', 5 )   
+set( gca, 'xlim', [0, 4], 'ytick', [ 0., 0.5 ] , 'yticklabel',{ 0., 0.5} , 'xtick', [ 0, 1.28, 2.35, 3, 4 ], 'xticklabel', { 0, 'Contact', 'Obstacle Removed', 3, 4 }, 'fontsize', 25 )
+xline( 1.28, 'linewidth', 2, 'linestyle', '--');             
+xline( 2.35, 'linewidth', 2, 'linestyle', '--');   
+yline( 0.5, 'linewidth', 2, 'linestyle', '--' );
+text( 0.05, 0.45, '$\mathcal{L}_{max}$' )
+xlabel( '$t$ (sec)', 'fontsize', 30 )
+ylabel( '$\mathcal{L}_c$ (J)', 'fontsize', 30 )
+
+mySaveFig( gcf, 'unexpected_contact_motor_lambda' )
