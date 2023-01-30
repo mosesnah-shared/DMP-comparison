@@ -123,8 +123,8 @@ def run_movement_primitives( my_sim ):
     if is_superimpose:
 
         motor_ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-        motor_ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = D1, ti = args.start_time  )    
-        motor_ctrl.set_impedance( Kx = 12 * np.eye( 3 ), Bx = 4 * np.eye( 3 ) )
+        motor_ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = D1, ti = args.start_time  )    
+        motor_ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
 
         my_sim.add_ctrl( motor_ctrl )
 
@@ -160,8 +160,8 @@ def run_motor_primitives( my_sim  ):
     else:        
         ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
-    ctrl.add_mov_pars( x0i = p0i, x0f = p0f, D = 3.0, ti = args.start_time  )    
-    ctrl.set_impedance( Kx = 300 * np.eye( 3 ), Bx = 100 * np.eye( 3 ) )
+    ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = 3.0, ti = args.start_time  )    
+    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
 
     # Add the controller to the simulation
     my_sim.add_ctrl( ctrl )
