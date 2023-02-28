@@ -8,6 +8,7 @@ from   modules.utils     import min_jerk_traj
 
 # The modules Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "../DMPmodules" ) )
+sys.path.append( os.path.join( os.path.dirname(__file__), "../inversemodel" ) )
 from InverseDynamicsModel import get2DOF_J, get2DOF_M, get2DOF_C, get2DOF_dJ, get5DOF_dJ, get5DOF_C
 
 
