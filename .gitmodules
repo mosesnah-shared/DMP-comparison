@@ -1,3 +1,6 @@
 [submodule "MATLAB/MATLAB_Library"]
 	path = MATLAB/MATLAB_Library
 	url = https://github.com/mosesnah-shared/MATLAB_Library
+[submodule "DMPmodules"]
+	path = DMPmodules
+	url = https://github.com/mosesnah-shared/DMPmodules

@@ -1,6 +1,4 @@
-import math
 import scipy.io
-
 import numpy             as np
 import matplotlib.pyplot as plt
 
@@ -9,50 +7,86 @@ from BasisFunctions  import BasisFunctions
 
 class DynamicMovementPrimitives:
     """
-        Dynamic Movement Primitives
+        Descriptions
+        ------------       
+            Dynamic Movement Primitives, from
+            [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
         
-        Both the Transformation System and Nonlinear Forcing Term is Derived Here
+            Both the Transformation System and Nonlinear Forcing Term is Derived Here
+            Imitation Learning is also implemented here
     """
 
     def __init__( self, name: str, mov_type:str, cs, n_bfs = 50, alpha_z = 24.0, beta_z = 6.0 ):
+        """
+        Descriptions
+        ------------
+            Constructor of Dynamic Movement Primitives DMP
+            The transformation system - Equation 2.1 of [REF] - is implemeneted
+            The transformation system is a 2nd-order linear system with a nonlinear force input.      
 
-        # Define the Transformation System 
-        # Equation 2.1 of REF
-        # [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
+            tau^2 ddy + alpha_z * tau * dy + alpha_z * beta_z * ( y-g ) = f( s ) 
 
-        # Name of this DMP
+
+        Parameters
+        ----------
+            (1) name: str
+                    The name of this DMP, e.g., dmp1, dmp2
+
+            (2) mov_type: str
+                    Either "discrete" or "rhythmic" movement type.
+
+            (3) cs : CanonicalSystem
+                    The canonical system for DMP
+                    Refer to "CanonicalSystem.py"
+
+            (4) n_bfs: int (default 50)
+                    The number of basis functions for the nonlinear forcing term.
+
+            (5) alpha_z: float (default 24.0)
+                    alpha_z value for the transformation system:
+                    tau^2 ddy + alpha_z * tau * dy + alpha_z * beta_z * ( y-g ) = f( s ) 
+
+            (6) beta_Z: float (default 6.0)
+                    beta_z value for the transformation system:
+                    tau^2 ddy + alpha_z * tau * dy + alpha_z * beta_z * ( y-g ) = f( s )             
+
+                    Usually, beta_z = alpha_z/4 to make the transformation system critically damped
+
+        """
+
         self.name = name
 
-        # Assert that mov_type is either discrete or rhythmic
         assert mov_type in [ "discrete", "rhythmic" ]
         self.mov_type = mov_type
 
-        # Usually, beta_z = alpha_z/4 to make the transformation system critically damped
-        # Hence, setting the default values of alpha_z, beta_z as 24.0, 6.0, respectively.
         self.alpha_z = alpha_z
         self.beta_z  = beta_z
 
-        # The canonical system of the Dynamic Movement Primitives
         # The canonical system MUST be defined for the Dynamic Movement Primitives
         # cs should NOT be empty
         assert cs is not None 
         self.cs = cs
 
-        # Tau of the canonical system and the DMP should match
+        # tau of the canonical system and the DMP should match
         self.tau = self.cs.tau 
 
         # The basis functions for the nonlinear forcing term
         self.basis_functions = BasisFunctions( mov_type = mov_type, n_bfs = n_bfs, cs = cs )
 
-        # The weights of the basis function, set as zero initially
+        # Initialization of the weights of the nonlinear forcing term.
+        # [TODO] [Moses C. Nah] [2023.02.27]
+        # Will be good to add a "init" method to initialize the values. 
         self.weights = np.zeros( self.basis_functions.n_bfs )
 
-        # Initialization of the movement parameters
+        # The desired trajectory which we aim to imitate 
+        # These *_des member variables are used to conduct imitation learning.
         self.t_des   = 0
         self.y_des   = 0
         self.dy_des  = 0
         self.ddy_des = 0
 
+        # The resulting trajectory of the transformation system.
+        # In other words, we save all the state variables for the trasformation system.
         self.t_arr  = 0
         self.y_arr  = 0
         self.z_arr  = 0
@@ -62,12 +96,57 @@ class DynamicMovementPrimitives:
 
     def step( self, g, y, z, f, dt ):
         """
-            Get the next y and z value with the dt step.
 
-            We set g as an input, since there are cases when g is a time-changing variable.
+        Descriptions
+        ------------
+            A single integration of the transformation system, given dt as a step size.
+            In other words, we calculate the new y and z values of the transformation system
 
-            Get also the current time of the simulation
+            [Note] [Moses C. Nah] [2023.02.27]
+            Here, we set goal g as an function argument,
+            since there are cases and applications when g is a time-changing variable (e.g., sequenced movements)
+    
+            Recall that the transformation system is defined by (Equation 1):
+                tau dy = z
+                tau dz = alpha_z * { beta_z * ( g - y ) - z } + f( s )
+            
+            In a single differential equation (Equation 2):
+                tau^2 ddy + alpha_z * tau * dy + alpha_z * beta_z * ( y-g ) = f( s ) 
+
+            
+        Parameters
+        ----------
+            (1) g: float
+                    The goal state g (Equation 1)
+
+            (2) y: float
+                    The y state (weighted position) (Equation 1)
+
+            (3) z: float
+                    The z state (weighted position) (Equation 1)            
+
+            (4) f: float            
+                    The nonlinear forcing term
+
+            (5) dt: time step
+                    The time step for the integration
+
+        Returns
+        -------
+            (1) y_new: float
+                    y_new = dy * dt + y
+
+            (2) z_new: float
+                    z_new = dz * dt + z
+
+            (3) dy: float
+                    The rate of change of dy (left-hand side of equation 1)
+
+            (4) dz: float
+                    The rate of change of dz (left-hand side of equation 1)
+            
         """
+        
         dy = z / self.tau
         dz = ( self.alpha_z * self.beta_z * ( g - y ) - self.alpha_z * z + f ) / self.tau
 
@@ -78,7 +157,42 @@ class DynamicMovementPrimitives:
 
     def imitation_learning( self, t_des, y_des, dy_des, ddy_des ):
         """
-            Learning the weights, center position and height of the basis functions
+        Descriptions
+        ------------
+            Imitation learning of DMP
+            Given the desired trajectory (position, velocity, acceleration, and time array)
+            We find the nonlinear forcing term which produces the desired trajectory.
+
+            In detail, the goal is to find the forcing term f(s) which satisfies:
+                tau^2 ddy_des + alpha_z * tau * dy_des + alpha_z * beta_z * ( y_des-g ) = f( s ) 
+
+            Note that for goal g,
+                For discrete movement, goal g is the final position of y_des
+                For rhythmic movement, goal g is the average position of y_des
+                [REF]: Ijspeert, Auke Jan, et al. "Dynamical movement primitives: learning attractor models for motor behaviors." Neural computation 25.2 (2013): 328-373.
+
+            f(s) consists of N weights for N basis functions, the weights are learned in this method.
+                
+        Parameters
+        ----------
+            (1) t_des: float (1D array)
+                    The time array of the desired trajectory to imitate
+
+            (2) y_des: float (1D array)
+                    The position of the desired trajectory to imitate
+
+            (3) dy_des: float (1D array)
+                    The velocity of the desired trajectory to imitate
+
+            (4) ddy_des: float (1D array)
+                    The acceleration of the desired trajectory to imitate
+
+        Returns
+        -------
+            There are no returns for this method, because the learned weights 
+            are saved directly to the self.basis_functions, 
+            which are defined at the default constructor of __init__():
+            
         """
 
         # Assert a 1D array and same length
@@ -91,7 +205,7 @@ class DynamicMovementPrimitives:
         self.dy_des  =  dy_des
         self.ddy_des = ddy_des
 
-        # Some parameters must be defined beforehand
+        # The initial position y0 and the goal parameters must be defined beforehand
         y0   = y_des[  0 ]
         goal = y_des[ -1 ] if self.mov_type == "discrete" else 0.5 * ( max( y_des ) + min( y_des ) )
 
@@ -104,6 +218,7 @@ class DynamicMovementPrimitives:
         # [REF] IBID
         s_arr = self.cs.get_value( self.t_des ) * ( goal - y0 ) if self.mov_type == "discrete" else np.ones_like( self.t_des )
             
+        # Learning the weights
         for i in range( self.basis_functions.n_bfs ):
             gamma = self.basis_functions.calc_ith_activation( i, self.cs.get_value( self.t_des ) ) 
 
@@ -113,26 +228,66 @@ class DynamicMovementPrimitives:
 
     def integrate( self, y0, z0, g, dt, t0, N ):
         """
-            Integrating the tranformation system
+        Descriptions
+        ------------
+            The whole integration of the transformation system.
+            Given time step of dt, we conduct N of dt time steps, i.e., total time = N * dt
+                   
+        Parameters
+        ----------
+            (1) y0: float
+                    The initial value of y for the transformation system.
 
-            Time step is dt, number of time step is N
+            (2) z0: float
+                    The initial value of z for the transformation system.
+
+            (3) g: float
+                    The goal state g 
+
+            (4) dt: float            
+                    The time step for the integration
+
+            (5) t0: float
+                    The initial time for the time step
+                    This is required when we want to start the movement at a specific time.
+
+            (6) N: int
+                    The number of time steps to conduct
+        
+        Returns
+        -------
+            (1) t_arr: float (1D array)
+
+            (2) y_arr: float (1D array)
+
+            (3) z_arr: float (1D array)
+            
+            (4) dy_arr: float (1D array)
+
+            (5) dz_arr: float (1D array)
+
         """
+
+        # Initialization of the arrays to learn
         self.y_arr  = np.zeros( N )
         self.z_arr  = np.zeros( N )
         self.dy_arr = np.zeros( N )        
         self.dz_arr = np.zeros( N )
 
-        # The initial value 
+        # The initial value of the transformation system
         self.y_arr[ 0 ] = y0
         self.z_arr[ 0 ] = z0
 
+        # The time array for integration
         self.t_arr = dt * np.arange( N )
 
+        # Conduct integration
         for i in range( N - 1 ):
 
             # Get the current time of the time_arr
             t = self.t_arr[ i ]
 
+            # If time is smaller than the initial time, then just stay there
             if t < t0:
                 self.y_arr[ i + 1 ] = self.y_arr[ i ]
                 self.z_arr[ i + 1 ] = self.z_arr[ i ]
@@ -146,6 +301,7 @@ class DynamicMovementPrimitives:
                 # If discrete movement, multiply (g-y0) and s on the value 
                 f *= s * ( g - y0 ) if self.mov_type == "discrete" else 1
 
+                # Single integration
                 self.y_arr[ i + 1 ], self.z_arr[ i + 1 ], self.dy_arr[ i ], self.dz_arr[ i ] = self.step( g, self.y_arr[ i ], self.z_arr[ i ] ,f, dt )
 
         # Copy the final elements
@@ -156,13 +312,21 @@ class DynamicMovementPrimitives:
 
     def save_mat_data( self, dir2save ):
         """
-            Basic code for saving the data of this dmp
-            This saves the data in .mat form 
+        Descriptions
+        ------------
+            Saving the .mat file for data analysis in MATLAB
+                   
+        Parameters
+        ----------
+            (1) dir2save: str
+                    The relative directory to save the .mat file
+
         """
 
+        # The whole details of a single DMP
         dict  = { "mov_type" : self.mov_type,  "weights": self.weights, "alpha_z": self.alpha_z,  "beta_z": self.beta_z, 
-                   "t_des": self.t_des, "y_des": self.y_des, "dy_des": self.dy_des, "ddy_des": self.ddy_des,
-                    "centers": self.basis_functions.centers, "heights": self.basis_functions.heights,
+                  "t_des": self.t_des, "y_des": self.y_des, "dy_des": self.dy_des, "ddy_des": self.ddy_des,
+                  "centers": self.basis_functions.centers, "heights": self.basis_functions.heights,
                   "t_arr": self.t_arr, "y_arr": self.y_arr, "z_arr": self.z_arr, 
                   "dy_arr": self.dy_arr, "dz_arr": self.dz_arr, 
                   "tau": self.cs.tau, "alpha_s": self.cs.alpha_s }
@@ -172,38 +336,53 @@ class DynamicMovementPrimitives:
 
 if __name__ == "__main__":
 
-    # Quick Test of Dynamic Movement Primitives 
-    # The type of movement
+    # Imitation Learning for Dynamic Movement Primitives
+    # Here, we show imitation learning of a discrete movement, a single minimum-jerk trajectory
     mov_type = "discrete"
-    
-    # Define the canonical system
-    cs = CanonicalSystem( mov_type = mov_type )
+    cs       = CanonicalSystem( mov_type = mov_type )
+    n_bfs    = 20
+    dmp      = DynamicMovementPrimitives( name = "dmp_discrete", mov_type = mov_type, cs = cs, n_bfs = n_bfs, alpha_z = 10, beta_z = 2.5 )
 
-    n_bfs = 20
-
-    dmp = DynamicMovementPrimitives( mov_type = mov_type, cs = cs, n_bfs = n_bfs, alpha_z = 10, beta_z = 2.5, tau = 1.0 )
-
-    # Train the movement as minimum jerk trajectory 
-    P  = 100
-    dt = 1.0/P
-
+    # The desired trajectory to imitate, which is a minimum-jerk trajectory                                     
+    P     = 100
+    dt    = 1.0/P
     t_arr = dt * np.arange( P )
-    pi = 0.
-    pf = 1.
-    D  = 1.
 
+    # The initial, final position and duration of the minimum-jerk trajectory
+    pi, pf, D = 0.0, 1.0, 1.0
+    
+    # The desired trajectory to imitate 
     y_des   =              pi + ( pf - pi ) * ( 10. * ( t_arr/D ) ** 3 -  15. * ( t_arr/D ) ** 4 +   6. * ( t_arr/D ) ** 5 )
     dy_des  =      ( 1. / D ) * ( pf - pi ) * ( 30. * ( t_arr/D ) ** 2 -  60. * ( t_arr/D ) ** 3 +  30. * ( t_arr/D ) ** 4 )
     ddy_des = ( 1. / D ** 2 ) * ( pf - pi ) * ( 60. * ( t_arr/D ) ** 1 - 180. * ( t_arr/D ) ** 2 + 120. * ( t_arr/D ) ** 3 )
 
     # Imitation learning of this trajectory 
+    # A higher resolution of the time step for the integration
+    dt = 0.001
     dmp.imitation_learning( t_arr, y_des, dy_des, ddy_des )
-    t_arr2, y_arr, z_arr, _, _ = dmp.integrate( 0, 0, pf, 0.001, D/0.001 )
+    t_arr2, y_arr, z_arr, dy_arr, dz_arr = dmp.integrate( 0, 0, pf, dt, 0, int( D/dt ) )
 
-    plt.plot( t_arr2, y_arr )
-    plt.plot( t_arr2, z_arr )
+    # Plotting the resultsc
+    fig1, ( ax1, ax2, ax3 ) = plt.subplots( nrows = 1, ncols = 3, figsize = (12, 8) )
 
-    plt.plot( t_arr, y_des  ) 
-    plt.plot( t_arr, dy_des )    
+    # The learned position, velocity and accelration
+    ax1.plot(  t_arr, y_des,   lw =4, linestyle='dashed', label="des"  )
+    ax1.plot( t_arr2, y_arr )    
 
+    ax2.plot(  t_arr, dy_des,  lw =4, linestyle='dashed', label="des"  )
+    ax2.plot( t_arr2, dy_arr )
+
+    ax3.plot(  t_arr, ddy_des, lw =4, linestyle='dashed', label="des"  )
+    ax3.plot( t_arr2, dz_arr  )
+
+    ax2.set_xlabel( "$t~(sec)$")
+    ax1.set_title( "Position" )  
+    ax2.set_title( "Velocity" )  
+    ax3.set_title( "Acceleration" )    
+
+    ax1.legend( )
+    ax2.legend( )
+    ax3.legend( )
+    
+    
     plt.show( )
