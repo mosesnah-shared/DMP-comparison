@@ -179,7 +179,7 @@ def run_motor_primitives( my_sim  ):
     ctrl1.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
 
     ctrl2 = CartesianImpedanceControllerObstacle( my_sim, args, name = "task_imp2", obs_pos = o )
-    ctrl2.set_impedance( k = 0.1 )
+    ctrl2.set_impedance( k = 0.0 )
     ctrl2.set_order( n = 6 )
 
     # Superimposing mechanical impedances

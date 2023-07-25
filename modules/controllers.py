@@ -628,6 +628,7 @@ class DMPTaskController2DOF( Controller ):
         self.p  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
         self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
 
+    
         self.t  = t
         
         # The joint positions
@@ -646,6 +647,12 @@ class DMPTaskController2DOF( Controller ):
 
         # The torque array
         self.tau = get2DOF_M( self.q ) @ self.ddq + get2DOF_C( self.q, self.dq ) @ self.dq
+
+        # [ADDED] Also superimpose a low PD control
+        self.q_real  = np.copy( self.mj_sim.mj_data.qpos[ : ] )
+        self.dq_real = np.copy( self.mj_sim.mj_data.qvel[ : ] )
+        # Superimpose a low-gain PD control
+        self.tau += 50 * ( self.q - self.q_real ) + 30 * ( self.dq - self.dq_real )
 
         if self.mj_args.is_save_data: self.save_data( )
 

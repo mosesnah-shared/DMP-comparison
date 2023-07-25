@@ -116,27 +116,12 @@ def run_movement_primitives( my_sim ):
     # Add the controller to the simulation
     my_sim.add_ctrl( dmp_ctrl )
 
-    # Also superimpose an impedance (PD) controller on the DMP controller
-    # Turn on/off the flag
-    is_superimpose = True
-    
-    if is_superimpose:
-
-        motor_ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-        motor_ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = D1, ti = args.start_time  )    
-        motor_ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
-
-        my_sim.add_ctrl( motor_ctrl )
-
     # Run the simulation
     my_sim.run( )
 
     if args.is_save_data or args.is_record_vid:  
         for i in range( nq ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
-
-    if is_superimpose:
-        if args.is_save_data: motor_ctrl.export_data( my_sim.tmp_dir )
 
     my_sim.close( )
 

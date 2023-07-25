@@ -40,7 +40,7 @@ def run_motor_primitives( my_sim ):
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
     # The joint stiffness and damping matrices
-    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 1000 * np.eye( 3 ), Bp = 500 * np.eye( 3 ) )
 
     # The parameters of the rhythmic controller
     r, omega0, c = 0.5, np.pi, np.sqrt( 2 )

@@ -59,8 +59,8 @@ hold on
 % The desired trajectory which is the minimum-jerk 
 plot( t_arr_move, data_move{ 1 }.y_arr, 'linewidth', 4,  'color', c.blue );
 plot( t_arr_move, q0_arr( 1, : ), 'color', 'k', 'linewidth', 4, 'linestyle', '--' );
-set( gca, 'xlim', [ 0, 3 ], 'ylim', [0, 1.1], 'fontsize', 30 )
-ylabel( 'Joint1, $q_1$ (rad)', 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 4 ], 'ylim', [0, 1.1], 'fontsize', 30 )
+ylabel( 'Joint1, $q_1(t)$ (rad)', 'fontsize', 30 )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 
 % ======================================================================== %
@@ -70,27 +70,27 @@ hold on
 
 plot( t_arr_move, data_move{ 2 }.y_arr, 'linewidth', 4,  'color', c.blue );
 plot( t_arr_move, q0_arr( 2, : ), 'color', 'k', 'linewidth', 4, 'linestyle', '--' );
-set( gca, 'xlim', [ 0, 3 ], 'ylim', [0, 1.1], 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 4 ], 'ylim', [0, 1.1], 'fontsize', 30 )
 xlabel( '$t$ (sec)', 'fontsize', 30 )
-ylabel( 'Joint2, $q_2$ (rad)', 'fontsize', 30 )
+ylabel( 'Joint2, $q_2(t)$ (rad)', 'fontsize', 30 )
 
 % ======================================================================== %
-% Plot3: Dynamic Motor Primitives, joint 1
+% Plot3: Elementary Dynamic Actions, joint 1
 subplot( 2, 2, 2 )
 hold on
 plot( data_motor.t_arr, data_motor.q_arr( 1, : ), 'linewidth', 4,  'color', c.orange );
 plot( data_motor.t_arr, q0_arr( 1, : ), 'color', 'k', 'linewidth', 4, 'linestyle', '--' );
-set( gca, 'xlim', [ 0, 3 ], 'ylim', [0, 1.1], 'fontsize', 30 )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 4 ], 'ylim', [0, 1.1], 'fontsize', 30 )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 
 
 % ======================================================================== %
-% Plot3: Dynamic Motor Primitives, joint 2
+% Plot3: Elementary Dynamic Actions, joint 2
 subplot( 2, 2, 4 )
 hold on
 plot( data_motor.t_arr, data_motor.q_arr( 2, : ), 'linewidth', 4,  'color', c.orange );
 plot( data_motor.t_arr, q0_arr( 2, : ), 'color', 'k', 'linewidth', 4, 'linestyle', '--' );
-set( gca, 'xlim', [ 0, 3 ], 'ylim', [0, 1.1], 'fontsize', 30 )
+set( gca, 'xlim', [ 0, 4 ], 'ylim', [0, 1.1], 'fontsize', 30 )
 xlabel( '$t$ (sec)', 'fontsize', 30 )
 
 
@@ -103,7 +103,8 @@ clear data*; clc;
 
 % The number of targets
 N = 8;
-c_arr = [ c.blue; c.orange; c.green; c.purple; c.roseRed; c.peach; c.pink; c.blue_sky ];
+% c_arr = [ c.blue; c.orange; c.green; c.purple; c.roseRed; c.peach; c.pink; c.blue_sky ];
+
 
 % ============================ Movement Primitives ==================================== %
 data_move = cell( 1,N ); 
@@ -130,33 +131,33 @@ hold on
 pEEi = data_move{ 1 }.p_arr( :, 1 );
 r = 0.5;
 for i = 1 : 8
-    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c_arr( i, : ), 'markeredgecolor', c_arr( i, : ), 'linewidth', 3 )
-    plot( data_move{ i }.p_arr( 1, : ) - pEEi( 1 ), data_move{ i }.p_arr( 2, : ) - pEEi( 2 ), 'linewidth', 8, 'color', c_arr( i, : ) )
-    plot( data_move{ i }.p_command(  1, : ) - pEEi( 1 ), data_move{ i }.p_command( 2, : ) - pEEi( 2 ), 'linewidth', 3, 'color', c.black, 'linestyle',  '--' )
+    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'linewidth', 3 )
+    plot( data_move{ i }.p_arr( 1, : ) - pEEi( 1 ), data_move{ i }.p_arr( 2, : ) - pEEi( 2 ), 'linewidth', 3, 'color', c.blue )
+    plot( data_move{ i }.p_command(  1, : ) - pEEi( 1 ), data_move{ i }.p_command( 2, : ) - pEEi( 2 ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
 end
 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 axis equal
-set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001] )
+set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001], 'xtick', [-0.6, -0.3, 0.0, 0.3, 0.6], 'ytick', [-0.6, -0.3, 0.0, 0.3, 0.6] ) 
 
 
 % ======================================================================== %
-% Plot2: Dynamic Motor Primitives
+% Plot2: Elementary Dynamic Actions
 subplot( 1, 2, 2)
 hold on
 for i = 1 : 8
-    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c_arr( i, : ), 'markeredgecolor', c_arr( i, : ), 'linewidth', 3 )
-    plot( data_motor{ i }.p_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p_arr - pEEi( 2 ), 'linewidth', 8, 'color', c_arr( i, : ) )
-    plot( data_motor{ i }.p0_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p0_arr( 2, : ) - pEEi( 2 ), 'linewidth', 3, 'color', c.black, 'linestyle',  '--' )
+    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'linewidth', 3 )
+    plot( data_motor{ i }.p_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p_arr - pEEi( 2 ), 'linewidth', 3, 'color', c.orange )
+    plot( data_motor{ i }.p0_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p0_arr( 2, : ) - pEEi( 2 ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
 end
 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 axis equal
-set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001] )
+set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001], 'xtick', [-0.6, -0.3, 0.0, 0.3, 0.6], 'ytick', [-0.6, -0.3, 0.0, 0.3, 0.6] ) 
 
 mySaveFig( gcf, 'goal_directed_discrete_task_space' )
 
@@ -212,9 +213,9 @@ scatter( p0f( 1 ), p0f( 2 ), 300,      'o', 'markerfacecolor', c.black, 'markere
 if mode == "MOVEMENT" 
     legend( '', 'Dynamic Movement Primitives', 'location', 'northwest', 'fontsize', 30  )
 elseif mode == "MOTOR"
-    legend( '', 'Dynamic Motor Primitives'   , 'location', 'northwest', 'fontsize', 30  )
+    legend( '', 'Elementary Dynamic Actions'   , 'location', 'northwest', 'fontsize', 30  )
 else
-    legend( '', 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 30  )
+    legend( '', 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'location', 'northwest', 'fontsize', 30  )
 end
 
 
@@ -243,8 +244,8 @@ if mode == "MOVEMENT" || mode == "BOTH"
     set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
     axis equal
     title( 'Dynamic Movement Primitives', 'fontsize', 30 )
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )    
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )    
 end
 
 if mode == "MOTOR" || mode == "BOTH"
@@ -269,9 +270,9 @@ if mode == "MOTOR" || mode == "BOTH"
 
     end
 
-    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )
+    title( 'Elementary Dynamic Actions', 'fontsize', 30 )
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )
     set( gca, 'xlim', [ -1.0, 4.0] , 'ylim', [-1.0, 4.0], 'xticklabel', {}, 'yticklabel', {} )
     axis equal
 end
@@ -301,7 +302,7 @@ set( gca, 'fontsize', 30, 'xlim', [0, 4 ], 'ylim', [ -1, 0.5], 'xtick', [0, 0.3,
 subplot( 2, 2, 2)
 plot( data_motor{1}.t_arr, data_motor{1}.q_arr )
 set( gca, 'fontsize', 30, 'xlim', [0, 4 ], 'ylim', [ -1, 2], 'xtick', [0, 0.3, 1.0, 2.0, 3.0, 4.0] )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 
 % Motor primitives, joint velocity
 subplot( 2, 2, 4)
@@ -353,8 +354,8 @@ scatter( g_new( 1 ), g_new( 2 ), 300, 'square', 'markerfacecolor', c.black, 'mar
 
 % The initial location
 scatter( data_motor{ 1 }.p0i( 1, 1 ), data_motor{ 1 }.p0i( 1, 2 ), 300, 'o', 'markerfacecolor', c.black, 'markeredgecolor', c.black )
-xlabel( 'X (m)', 'fontsize', 35 )
-ylabel( 'Y (m)', 'fontsize', 35 )
+xlabel( '$X$ (m)', 'fontsize', 35 )
+ylabel( '$Y$ (m)', 'fontsize', 35 )
 text( g_old( 1 ) - 0.1, g_old( 2 ) + 0.05, '$\mathbf{g}_{old}$' );
 text( g_new( 1 ) - 0.1, g_new( 2 ) - 0.1, '$\mathbf{g}_{new}$' );
 text( data_motor{ 1 }.p0i( 1, 1 ) +0.1,  data_motor{ 1 }.p0i( 1, 2 ), '$\mathbf{p}_{i}$' );
@@ -362,9 +363,9 @@ text( data_motor{ 1 }.p0i( 1, 1 ) +0.1,  data_motor{ 1 }.p0i( 1, 2 ), '$\mathbf{
 if mode == "MOVEMENT" 
     legend( 'Dynamic Movement Primitives', 'location', 'northwest', 'fontsize', 23)
 elseif mode == "MOTOR"
-    legend( 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 23  )
+    legend( 'Elementary Dynamic Actions', 'location', 'northwest', 'fontsize', 23  )
 else
-    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'northwest', 'fontsize', 23  )
+    legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'location', 'northwest', 'fontsize', 23  )
 end
 
 
@@ -401,8 +402,8 @@ if mode == "MOVEMENT" || mode == "BOTH"
     set( gca, 'xticklabel', {}, 'yticklabel', {} ,'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
     axis equal
     title( 'Dynamic Movement Primitives', 'fontsize', 30 )
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )    
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )    
 end
 
 if mode == "MOTOR" || mode == "BOTH"
@@ -432,9 +433,9 @@ if mode == "MOTOR" || mode == "BOTH"
     
     set( gca, 'xticklabel', {}, 'yticklabel', {},'xlim', [ -1.0, 1.0], 'ylim', [-0.1, 1.9 ] )
     axis equal
-    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )
+    title( 'Elementary Dynamic Actions', 'fontsize', 30 )
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )
 end
 
 mySaveFig( gcf, 'sequence_figure1' )
@@ -465,9 +466,9 @@ set( gca, 'fontsize', 30, 'xlim', [0.0, 4], 'xtick', [ 0, 0.5, 1, 2, 3, 4 ], 'xt
 if mode == "MOVEMENT" 
     legend( 'Dynamic Movement Primitives', 'location', 'southeast', 'fontsize', 30)
 elseif mode == "MOTOR"
-    legend( 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30  )
+    legend( 'Elementary Dynamic Actions', 'location', 'southeast', 'fontsize', 30  )
 else
-    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30 )
+    legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'location', 'southeast', 'fontsize', 30 )
 end
 
 subplot( 2, 1, 2 )
@@ -490,9 +491,9 @@ set( gca, 'fontsize', 30, 'xlim', [0, 4], 'xtick', [ 0, 0.5, 1, 2, 3, 4 ], 'xtic
 if mode == "MOVEMENT" 
     legend( 'Dynamic Movement Primitives', 'location', 'southeast', 'fontsize', 30)
 elseif mode == "MOTOR"
-    legend( 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize', 30 )
+    legend( 'Elementary Dynamic Actions', 'location', 'southeast', 'fontsize', 30 )
 else
-    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'location', 'southeast', 'fontsize',30 )
+    legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'location', 'southeast', 'fontsize',30 )
 end
 mySaveFig( gcf, 'sequence_figure2' )
 
@@ -536,7 +537,7 @@ axis equal
 set( gca, 'xlim', [-0.6, 0.60001], 'ylim', [-0.6, 0.60001], 'fontsize', 30 )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 
-% Dynamic Motor Primitives
+% Elementary Dynamic Actions
 subplot( 1, 2, 2)
 hold on
 
@@ -547,7 +548,7 @@ xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
 axis equal
 set( gca, 'xlim', [-0.6, 0.60001], 'ylim', [-0.6, 0.60001], 'fontsize', 30 )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 
 
 mySaveFig( gcf,  'task_space_rhythmic' )
@@ -574,19 +575,19 @@ plot( data_move{ 1 }.t_arr, data_move{ 2 }.g0, 'linewidth', 2, 'linestyle', '-.'
 plot( data_move{ 1 }.t_arr, data_move{ 1 }.q_arr( 2, : ), 'linewidth', 6, 'color', c.blue )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 ylabel( '$q_{elbow}(t)$ (rad)', 'fontsize', 30 )
-legend( '$g$', '$g_0$' )
+legend( '$g(t)$', '$g_0$' )
 set( gca, 'xlim', [0, 17.4], 'fontsize', 30  )
 
-% Dynamic Motor Primitives
-
+% Elementary Dynamic Actions
 subplot( 2, 1, 2 )
 hold on
-plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q0_tmp_arr( 2, :), 'linewidth', 2, 'color', c.black )
+plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q0_arr( 2, :), 'linewidth', 2, 'linestyle', '-.', 'color', c.black )
 plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q_arr( 2, : ), 'linewidth', 4, 'color', c.orange )
 set( gca, 'xlim', [0, 17.4 ], 'fontsize', 30  )
 xlabel( '$t$ (sec)', 'fontsize', 30 )
 ylabel( '$q_{elbow}(t)$ (rad)', 'fontsize', 30 )
-title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+legend( '$q_{0,elbow}(t)$' )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 
 mySaveFig( gcf,  'discrete_and_rhythmic' )
 
@@ -606,7 +607,7 @@ data_move{ 2 } = load( file_name2 );
 data_move{ 3 } = load( file_name3 );
 
 % =============================== Motor Primitives ==================================== %
-% Dynamic Motor Primitives
+% Elementary Dynamic Actions
 file_name1 = '../results/obstacle_avoidance/motor/ctrl_task_imp.mat';
 file_name2 = '../results/obstacle_avoidance/motor/ctrl_task_imp2.mat';
 data_motor{ 1 } = load( file_name1 );
@@ -636,12 +637,12 @@ text( data_motor{1}.p0f( 1 )-0.08, data_motor{1}.p0f( 2 ), '$\mathbf{g}$' )
 if mode == "MOVEMENT"
     legend( 'Dynamic Movement Primitives', 'fontsize', 30 , 'location', 'southwest' )
 elseif mode == "MOTOR"
-    legend( 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
+    legend( 'Elementary Dynamic Actions', 'fontsize', 30 , 'location', 'southwest' )
 else
-    legend( 'Dynamic Movement Primitives', 'Dynamic Motor Primitives', 'fontsize', 30 , 'location', 'southwest' )
+    legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'fontsize', 30 , 'location', 'southwest' )
 end    
-xlabel( 'X (m)', 'fontsize', 35 )
-ylabel( 'Y (m)', 'fontsize', 35 )
+xlabel( '$X$ (m)', 'fontsize', 35 )
+ylabel( '$Y$ (m)', 'fontsize', 35 )
 
 
 if mode == "MOVEMENT" || mode == "BOTH" 
@@ -673,8 +674,8 @@ if mode == "MOVEMENT" || mode == "BOTH"
     title( 'Dynamic Movement Primitives', 'fontsize', 30 )
     set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
     axis equal    
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )    
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )    
 
 end
     
@@ -705,11 +706,11 @@ if mode == "MOTOR" || mode == "BOTH"
     plot( data_motor{1}.p_arr( 1, : ), data_motor{1}.p_arr( 2, : ), 'linewidth', 4, 'color', c.orange )
 
 
-    title( 'Dynamic Motor Primitives', 'fontsize', 30 )
+    title( 'Elementary Dynamic Actions', 'fontsize', 30 )
     set( gca, 'xlim', [-0.2, 0.2] , 'ylim', [0.0, 2.0], 'xticklabel', {}, 'yticklabel', {} )
     axis equal
-    xlabel( 'X (m)', 'fontsize', 35 )
-    ylabel( 'Y (m)', 'fontsize', 35 )        
+    xlabel( '$X$ (m)', 'fontsize', 35 )
+    ylabel( '$Y$ (m)', 'fontsize', 35 )        
 end    
 
 mySaveFig( gcf, 'obstacle' )
@@ -740,18 +741,18 @@ data_move_w_obs_woPD{ 2 } = load( file_name_mov_w_obs_woPD_2 );
 data_move_w_obs_woPD{ 3 } = load( file_name_mov_w_obs_woPD_3 );
 
 % With obstacle PD
-file_name_mov_w_obs_wPD_1 = '../results/unexpected_contact/movement/with_obstacle_PD/dmpx.mat';
-file_name_mov_w_obs_wPD_2 = '../results/unexpected_contact/movement/with_obstacle_PD/dmpy.mat';
-file_name_mov_w_obs_wPD_3 = '../results/unexpected_contact/movement/with_obstacle_PD/ctrl_task_dmp.mat';
-file_name_mov_w_obs_wPD_4 = '../results/unexpected_contact/movement/with_obstacle_PD/ctrl_task_imp.mat';
+file_name_mov_w_obs_wPD_1 = '../results/unexpected_contact/movement/with_obstacle_joint_PD/dmpx.mat';
+file_name_mov_w_obs_wPD_2 = '../results/unexpected_contact/movement/with_obstacle_joint_PD/dmpy.mat';
+file_name_mov_w_obs_wPD_3 = '../results/unexpected_contact/movement/with_obstacle_joint_PD/ctrl_task_dmp.mat';
+% file_name_mov_w_obs_wPD_4 = '../results/unexpected_contact/movement/with_obstacle_joint_PD/ctrl_task_imp.mat';
 
 data_move_w_obs_wPD{ 1 } = load( file_name_mov_w_obs_wPD_1 );
 data_move_w_obs_wPD{ 2 } = load( file_name_mov_w_obs_wPD_2 );
 data_move_w_obs_wPD{ 3 } = load( file_name_mov_w_obs_wPD_3 );
-data_move_w_obs_wPD{ 4 } = load( file_name_mov_w_obs_wPD_4 );
+% data_move_w_obs_wPD{ 4 } = load( file_name_mov_w_obs_wPD_4 );
 
 % ======================================================================== %
-% Dynamic Motor Primitives
+% Elementary Dynamic Actions
 % Without Obstacle
 file_name_motor_wo_obs = '../results/unexpected_contact/motor/without_obstacle/ctrl_task_imp.mat';
 data_motor_wo_obs{ 1 } = load( file_name_motor_wo_obs );
@@ -1118,7 +1119,7 @@ if mode == "MOTOR" || mode == "BOTH"
     text( 0.03, 1.82, 'Goal $\mathbf{g}$','fontsize', 20 )
     text( -0.15,1.8,'E')
     legend( 'A', 'B,C', 'B,D', 'location', 'southwest' )
-    sgtitle( 'Dynamic Motor Primitives', 'fontsize', 30)
+    sgtitle( 'Elementary Dynamic Actions', 'fontsize', 30)
 
     mySaveFig( gcf, 'unexpected_contact_motor' )
 
