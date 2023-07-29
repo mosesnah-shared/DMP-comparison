@@ -107,60 +107,202 @@ N = 8;
 
 
 % ============================ Movement Primitives ==================================== %
-data_move = cell( 1,N ); 
-
-for i = 1 : 8
-    file_name = ['../results/discrete_move_task_space_wo_redund/movement/target', num2str( i ), '/ctrl_task_dmp.mat' ];
-    data_move{ i } = load( file_name );
-end
+data_move = load( '../results/discrete_move_task_space_wo_redund/movement/vertical/ctrl_task_dmp.mat'  );
 
 % =============================== Motor Primitives ==================================== %
-data_motor = cell( 1,N );
-
-for i = 1 : 8
-    file_name = ['../results/discrete_move_task_space_wo_redund/motor/target', num2str( i ), '/ctrl_task_imp.mat' ];
-    data_motor{ i } = load( file_name );
-end
+data_motor = load( '../results/discrete_move_task_space_wo_redund/motor/vertical/ctrl_task_imp.mat' );
 
 % ======================================================================== %
 % Plot1: Dynamic Movement Primitives
 subplot( 1, 2, 1 )
 hold on
 
-% Get initial position of the end-effector
-pEEi = data_move{ 1 }.p_arr( :, 1 );
-r = 0.5;
-for i = 1 : 8
-    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'linewidth', 3 )
-    plot( data_move{ i }.p_arr( 1, : ) - pEEi( 1 ), data_move{ i }.p_arr( 2, : ) - pEEi( 2 ), 'linewidth', 3, 'color', c.blue )
-    plot( data_move{ i }.p_command(  1, : ) - pEEi( 1 ), data_move{ i }.p_command( 2, : ) - pEEi( 2 ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+% Get the x, y position of the joints 
+q_abs = cumsum( data_move.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+
+alpha_arr = [0.2, 0.3, 0.7, 1.0];
+idx_arr   = [1, 1000, 1400, 4000];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
 end
 
+plot( data_move.p_arr( 1, : ), data_move.p_arr( 2, : ) , 'linewidth', 3, 'color', c.blue )
+plot( data_move.p_command(  1, : ), data_move.p_command( 2, : ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+text( -1.3,1.8,'A', 'fontsize', 30)
+    
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
 title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 axis equal
-set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001], 'xtick', [-0.6, -0.3, 0.0, 0.3, 0.6], 'ytick', [-0.6, -0.3, 0.0, 0.3, 0.6] ) 
+
+set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 ) 
 
 
 % ======================================================================== %
 % Plot2: Elementary Dynamic Actions
 subplot( 1, 2, 2)
 hold on
-for i = 1 : 8
-    plot( r * cos( ( i - 1 ) * pi/4 ) , r * sin( ( i - 1 ) * pi/4 ), 'o', 'markersize', 30, 'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'linewidth', 3 )
-    plot( data_motor{ i }.p_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p_arr - pEEi( 2 ), 'linewidth', 3, 'color', c.orange )
-    plot( data_motor{ i }.p0_arr( 1, : ) - pEEi( 1 ), data_motor{ i }.p0_arr( 2, : ) - pEEi( 2 ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+
+alpha_arr = [0.2, 0.3, 0.7, 1.0];
+idx_arr   = [1, 1000, 1400, 4000];
+
+% Get the x, y position of the joints 
+q_abs = cumsum( data_motor.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
 end
+plot( data_motor.p_arr( 1, : ) , data_motor.p_arr( 2, : ), 'linewidth', 3, 'color', c.orange )
+plot( data_motor.p0_arr( 1, : ), data_motor.p0_arr( 2, : ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+text( -1.3,1.8,'B', 'fontsize', 30)
 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
 title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 axis equal
-set( gca, 'xlim', [-0.6, 0.600001], 'ylim', [-0.6, 0.600001], 'xtick', [-0.6, -0.3, 0.0, 0.3, 0.6], 'ytick', [-0.6, -0.3, 0.0, 0.3, 0.6] ) 
+set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 ) 
 
-mySaveFig( gcf, 'goal_directed_discrete_task_space' )
+mySaveFig( gcf, 'goal_directed_discrete_task_space_no_stretch' )
 
+%% ==================================================================
+%% (--) Goal directed Discrete Movement - Task-Space, Fully Streched #1
+
+clear data*; clc;
+close all;
+
+% ============================ Movement Primitives ==================================== %
+data_move = load( '../results/discrete_move_task_space_wo_redund/movement/vertical_stretch/ctrl_task_dmp.mat'  );
+
+% =============================== Motor Primitives ==================================== %
+data_motor = load( '../results/discrete_move_task_space_wo_redund/motor/vertical_stretch/ctrl_task_imp.mat' );
+
+
+% ======================================================================== %
+% Plot1: Dynamic Movement Primitives
+subplot( 1, 2, 1 )
+hold on
+
+% Get the x, y position of the joints 
+q_abs = cumsum( data_move.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+
+alpha_arr = [0.2, 0.3, 0.7, 1.0];
+idx_arr   = [1, 1000, 1400, 1850];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+text(  -1.5,2.0,'C', 'fontsize', 30)
+
+plot( data_move.p_arr( 1, : ), data_move.p_arr( 2, : ) , 'linewidth', 3, 'color', c.blue )
+plot( data_move.p_command(  1, : ), data_move.p_command( 2, : ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+title( 'Dynamic Movement Primitives', 'fontsize', 30 )
+axis equal
+
+set( gca, 'xlim', [-1.2, 1.2] , 'ylim', [-0.2, 2.2], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 )
+
+% ======================================================================== %
+% Plot2: Elementary Dynamic Actions
+subplot( 1, 2, 2)
+hold on
+
+alpha_arr = [0.2, 0.3, 0.7, 1.0];
+idx_arr   = [1, 1200, 1900, 2700];
+
+% Get the x, y position of the joints 
+q_abs = cumsum( data_motor.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+text( -1.5,2.0,'D', 'fontsize', 30)
+
+
+plot( data_motor.p_arr( 1, : ) , data_motor.p_arr( 2, : ), 'linewidth', 3, 'color', c.orange )
+plot( data_motor.p0_arr( 1, : ), data_motor.p0_arr( 2, : ), 'linewidth', 5, 'color', c.black, 'linestyle',  '--' )
+
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
+axis equal
+set( gca, 'xlim', [-1.2, 1.2] , 'ylim', [-0.2, 2.2], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 )
+
+mySaveFig( gcf, 'goal_directed_discrete_task_space_stretch' )
+
+%% (--) Goal directed Discrete Movement - Task-Space, Fully Streched #2
+% Plotting the torque profile 
+% First, plotting the determinant of the Jacobian matrix
+
+
+clear data*; clc;
+close all;
+
+subplot( 2, 1, 1)
+
+% ============================ Movement Primitives ==================================== %
+data_move = load( '../results/discrete_move_task_space_wo_redund/movement/vertical_stretch/ctrl_task_dmp.mat'  );
+
+% =============================== Motor Primitives ==================================== %
+data_motor = load( '../results/discrete_move_task_space_wo_redund/motor/vertical_stretch/ctrl_task_imp.mat' );
+
+hold on
+Ntmp = length( data_move.t_arr );
+det_arr_move = zeros( 1, Ntmp );
+for i = 1 : Ntmp
+    det_arr_move( i ) = det( data_move.J_arr( :, : , i ) );
+end
+
+Ntmp = length( data_motor.t_arr );
+det_arr_motor = zeros( 1, Ntmp );
+for i = 1 : Ntmp
+    det_arr_motor( i ) = det( data_motor.J_arr( :, 1:2, i ) );
+end
+
+text( -0.3, 1.0,'E', 'fontsize', 30)
+
+plot( data_move.t_arr,  det_arr_move, 'color', c.blue, 'linewidth',6  )
+plot( data_motor.t_arr, det_arr_motor, 'color', c.orange, 'linewidth', 6 )
+xlabel( '$t$ (sec)', 'fontsize', 30 )
+ylabel( '$\det(\mathbf{J}(\mathbf{q}))$ (-)', 'fontsize', 30 )
+set( gca, 'xtick', [ 0, 1, 1.9, 2.5, 3, 4], 'xticklabel', { '0','1','Halted', '2.5','3','4' }, 'fontsize', 25 )
+legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'fontsize', 30, 'location', 'southwest' )
+
+mySaveFig( gcf, 'goal_directed_discrete_task_space_stretch2' )
 
 %% ==================================================================
 %% (--) Goal directed Discrete Movement - With Redundancy #1
@@ -500,10 +642,11 @@ mySaveFig( gcf, 'sequence_figure2' )
 
 
 %% ==================================================================
-%% (--) Task-space Trajectory Tracking --- Rhythmic
+%% (--) Task-space Trajectory Tracking --- Rhythmic, Task-space
 % All data generated by "main_task_trajectory_rhythmic.py"
 
 clear data*; clc;
+close all;
 
 % ============================ Movement Primitives ==================================== %
 file_name1 = '../results/rhythmic_task_space/movement/ctrl_task_dmp.mat';
@@ -528,7 +671,7 @@ hold on
 centers = data_motor{1}.centers;
 r = data_motor{1}.amps;
 
-plot( data_move{ 1 }.p_command( 1, : ) -centers( 1 ), data_move{ 1 }.p_command( 2, : ) -centers( 2 ), 'linewidth', 6, 'color', c.blue )
+plot( data_move{ 1 }.p_arr( 1, : ) -centers( 1 ), data_move{ 1 }.p_arr( 2, : ) -centers( 2 ), 'linewidth', 6, 'color', c.blue )
 plot( r * cos( 0:0.001:2*pi ),  r * sin( 0:0.001:2*pi ), 'linewidth', 3, 'linestyle', '--', 'color', 'k')
  
 xlabel( '$X$ (m)', 'fontsize', 30 )
@@ -550,8 +693,178 @@ axis equal
 set( gca, 'xlim', [-0.6, 0.60001], 'ylim', [-0.6, 0.60001], 'fontsize', 30 )
 title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 
+mySaveFig( gcf,  'task_space_rhythmic_task_space' )
 
-mySaveFig( gcf,  'task_space_rhythmic' )
+% Generate a New figure
+
+figure( )
+
+% Dynamic Movement Primitives
+subplot( 1, 2, 1 )
+hold on
+
+q_abs = cumsum( data_move{ 1 }.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+plot( data_move{ 1 }.p_command( 1, : ), data_move{ 1 }.p_command( 2, : ), 'linewidth', 6, 'color', c.blue )
+plot( r * cos( 0:0.001:2*pi ) + centers( 1 ),  r * sin( 0:0.001:2*pi )+ centers( 2 ), 'linewidth', 3, 'linestyle', '--', 'color', 'k')
+ 
+
+alpha_arr = [0.7, 0.7, 0.7, 0.7];
+idx_arr   = [1, 500, 1000, 1500];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 300, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx ) ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx ),  900,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+
+axis equal
+set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 ) 
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+
+% Dynamic Motor Primitives
+subplot( 1, 2, 2 )
+hold on
+
+q_abs = cumsum( data_motor{ 1 }.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+plot( data_motor{ 1 }.p_arr( 1, : ), data_motor{ 1 }.p_arr( 2, : ), 'linewidth', 6, 'color', c.orange )
+plot( r * cos( 0:0.001:2*pi )+ centers( 1 ),  r * sin( 0:0.001:2*pi )+ centers( 2 ), 'linewidth', 3, 'linestyle', '--', 'color', 'k')
+
+
+alpha_arr = [0.7, 0.7, 0.7, 0.7];
+idx_arr   = [1, 500, 1000, 1500];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0; x_arr( 1:end-1, idx ) ] , [ 0; y_arr( 1:end-1, idx ) ], 300, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0; x_arr( :, idx ) ] , [ 0; y_arr( :, idx ) ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx ),  900,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+axis equal
+set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', 25 ) 
+
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+
+mySaveFig( gcf,  'task_space_rhythmic_task_space_screenshots' )
+
+
+%% (--) Task-space Trajectory Tracking --- Rhythmic, Joint-space
+
+clear data*; clc;
+close all;
+
+% ============================ Movement Primitives ==================================== %
+file_name1 = '../results/rhythmic_joint_space/movement/ctrl_joint_dmp.mat';
+file_name2 = '../results/rhythmic_joint_space/movement/dmp_rhythmicq1.mat';
+file_name3 = '../results/rhythmic_joint_space/movement/dmp_rhythmicq2.mat';
+
+data_move{ 1 }  = load( file_name1 );
+data_move{ 2 }  = load( file_name2 );
+data_move{ 3 }  = load( file_name3 );
+
+% =============================== Motor Primitives ==================================== %
+file_name1 = '../results/rhythmic_joint_space/motor/ctrl_joint_imp.mat';
+data_motor{ 1 } = load( file_name1 );
+clear file*
+
+% Dynamic Movement Primitives
+subplot( 2, 1, 1 )
+hold on 
+q_abs = cumsum( data_move{ 1 }.q_arr , 1 );
+
+plot( data_move{ 1 }.t_arr, data_move{ 1 }.q_arr( 1, : ), 'linewidth', 3, 'color', c.blue )
+plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q_arr( 1, : ), 'linewidth', 3, 'color', c.orange )
+plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', c.black, 'linestyle', '--' )
+
+
+set( gca, 'ylim', [0.3, 0.75], 'fontsize', 25 )
+legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'fontsize', 25 )
+ylabel( '$q_1(t)$ (rad)', 'fontsize', 30 )
+xlabel( '$t$ (sec)', 'fontsize', 30 )
+
+% Dynamic Motor Primitives
+subplot( 2, 1, 2 )
+hold on 
+q_abs = cumsum( data_motor{ 1 }.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+plot( data_move{ 1 }.t_arr, data_move{ 1 }.q_arr( 2, : ), 'linewidth', 3, 'color', c.blue )
+plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q_arr( 2, : ), 'linewidth', 3, 'color', c.orange )
+plot( data_motor{ 1 }.t_arr, data_motor{ 1 }.q0_arr( 2, : ), 'linewidth', 6, 'color', c.black, 'linestyle', '--' )
+
+ylabel( '$q_2(t)$ (rad)', 'fontsize', 30 )
+set( gca, 'ylim', [0.1, 0.9], 'fontsize', 25 )
+xlabel( '$t$ (sec)', 'fontsize', 30 )
+
+mySaveFig( gcf,  'task_space_rhythmic_joint_space1' )
+
+
+% Another plot
+subplot( 1, 2, 1 )
+hold on
+q_abs = cumsum( data_move{ 1 }.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+Ntmp = 20;
+alpha_arr = 0.3 * ones( 1, Ntmp  );
+idx_arr   = 50 * [1:Ntmp ];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.blue, 'markeredgecolor', c.blue, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+
+axis equal
+set( gca, 'xlim', [-0.2, 2.0] , 'ylim', [-0.2, 2.0], 'xtick', [ 0.0, 1.0 , 2.0], 'ytick', [0.0, 1.0 , 2.0], 'fontsize', 25 ) 
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+
+
+subplot( 1, 2, 2 )
+hold on
+q_abs = cumsum( data_motor{ 1 }.q_arr , 1 );
+x_arr = cumsum( cos( q_abs ), 1 );
+y_arr = cumsum( sin( q_abs ), 1 );
+
+
+Ntmp = 20;
+alpha_arr = 0.3 * ones( 1, Ntmp  );
+idx_arr   = 50 * [1:Ntmp ];
+for i = 1 : length( idx_arr )
+    idx = idx_arr( i );
+    alpha = alpha_arr( i );
+    scatter( [ 0, x_arr( 1:end-1, idx  )' ] , [ 0, y_arr(1:end-1, idx )' ], 200, 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+    p2 = plot( [ 0, x_arr( :, idx )' ] , [ 0, y_arr( :, idx)' ], 'color', c.black, 'linewidth', 4 );
+    p2.Color( 4 ) = alpha;
+    scatter( x_arr( end, idx ), y_arr( end, idx  ),  600,  'markerfacecolor', c.orange, 'markeredgecolor', c.orange, 'MarkerFaceAlpha', alpha,'MarkerEdgeAlpha',alpha  )
+
+end
+
+axis equal
+set( gca, 'xlim', [-0.2, 2.0] , 'ylim', [-0.2, 2.0], 'xtick', [ 0.0, 1.0 , 2.0], 'ytick', [0.0, 1.0 , 2.0], 'fontsize', 25 ) 
+xlabel( '$X$ (m)', 'fontsize', 30 )
+ylabel( '$Y$ (m)', 'fontsize', 30 )
+
+
+mySaveFig( gcf,  'task_space_rhythmic_joint_space2' )
 
 %% ==================================================================
 %% (--) Discrete and Rhythmic Movements 
@@ -985,7 +1298,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {} )
-    text( -1.5,1.8,'A')
+    text( -1.5,1.8,'F')
     ylabel( 'Y (m)', 'fontsize', 30 )
     
     scatter( start( 1 ), start( 2 ), 100, 'square', 'markerfacecolor', c.black, 'markeredgecolor', c.black, 'markerfacealpha', 1.0 )    
@@ -1022,7 +1335,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'B')    
+    text( -1.5,1.8,'I')    
      
     
     subplot( 2, 4, 3 )
@@ -1057,7 +1370,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'C')    
+    text( -1.5,1.8,'J')    
          
     subplot( 2, 4, 4 )
     
@@ -1093,7 +1406,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'D')    
+    text( -1.5,1.8,'K')    
              
     annotation('textarrow', [0.82, 0.795], [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
     annotation('textarrow', [0.82, 0.795]-0.205, [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
@@ -1117,8 +1430,8 @@ if mode == "MOTOR" || mode == "BOTH"
     ylabel( 'Y (m)', 'fontsize', 30 )    
     text( 0.03, 0.65, 'Start', 'fontsize', 20 )
     text( 0.03, 1.82, 'Goal $\mathbf{g}$','fontsize', 20 )
-    text( -0.15,1.8,'E')
-    legend( 'A', 'B,C', 'B,D', 'location', 'southwest' )
+    text( -0.15,1.8,'L')
+    legend( 'F', 'I,J', 'K,L', 'location', 'southwest' )
     sgtitle( 'Elementary Dynamic Actions', 'fontsize', 30)
 
     mySaveFig( gcf, 'unexpected_contact_motor' )

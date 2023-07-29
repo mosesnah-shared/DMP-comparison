@@ -43,15 +43,15 @@ def run_motor_primitives( my_sim ):
     n = my_sim.n_act
 
     # Setting the initial conditino of the robots
-    q1 = np.pi * 1/4
+    q1 = np.pi * 1/12
     init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # Get the initial end-effector position, and 8 targets in total
     idx = args.target_idx
     pi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
-    pf = pi + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
-    ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 1., ti = args.start_time  )    
+    pf = pi + np.array( [ 0.0, 2.0 - pi[ 1 ], 0.0 ] )
+    ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 3., ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
@@ -88,15 +88,15 @@ def run_movement_primitives( my_sim ):
         dmp_list.append( dmp )
         
     # Setting the initial condition of the arm posture 
-    q1 = np.pi * 1/4
+    q1 = np.pi * 1/12
     init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( my_sim.nq ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
 
     # The parameters of min-jerk-traj
     idx = args.target_idx    
-    p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
-    p0f = p0i + 0.5 * np.array( [ np.cos( idx * np.pi/4 ), np.sin( idx * np.pi/4 ), 0 ] )
-    D = 1.0     
+    p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector"  ) ) 
+    p0f = p0i + np.array( [ 0.0, 2.0, 0.0 ] )
+    D = 3.0     
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D        

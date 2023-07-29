@@ -117,7 +117,7 @@ class JointImpedanceController( ImpedanceController ):
         super( ).__init__( mj_sim, mj_args, name )
 
         # The name of the controller parameters 
-        self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti", "amps", "omegas", "offsets" )
+        self.names_ctrl_pars = ( "Kq", "Bq", "q0i", "q0f", "D", "ti", "amps", "omegas", "offsets", "offsets2" )
 
         # The name of variables that will be saved 
         self.names_data = ( "t", "tau", "q", "q0", "dq", "dq0", "ddq" , "ddq0", "q0_tmp" )
@@ -157,7 +157,7 @@ class JointImpedanceController( ImpedanceController ):
         self.n_movs += 1
 
 
-    def add_rhythmic_mov( self, amp: np.ndarray, offset:np.ndarray, omega:float ):
+    def add_rhythmic_mov( self, amp: np.ndarray, offset:np.ndarray, offset2:np.ndarray, omega:float ):
 
         # The center must be a 3D location
         assert len( amp ) == self.n_act and len( offset ) == self.n_act
@@ -166,6 +166,7 @@ class JointImpedanceController( ImpedanceController ):
         self.amps.append( amp )
         self.omegas.append( omega )
         self.offsets.append( offset )
+        self.offsets2.append( offset2 )
         self.n_movs_rhyth += 1
 
     def input_calc( self, t ):
@@ -215,7 +216,7 @@ class JointImpedanceController( ImpedanceController ):
         if self.n_movs_rhyth != 0: 
             for i in range( self.n_movs_rhyth ):
                 for j in range( self.n_act ):
-                    self.q0[  j ]  +=   self.amps[ i ][ j ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ j ] )
+                    self.q0[  j ]  += self.offsets2[ i ][ j ] +  self.amps[ i ][ j ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ j ] )
                     self.dq0[ j ]  +=   self.amps[ i ][ j ] * np.cos( self.omegas[ i ] * t + self.offsets[ i ][ j ] ) * self.omegas[ i ]
                     self.ddq0[ j ] += - self.amps[ i ][ j ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ j ] ) * self.omegas[ i ] ** 2 
 
@@ -280,13 +281,14 @@ class CartesianImpedanceController( ImpedanceController ):
 
         self.n_movs += 1
 
-    def add_rhythmic_mov( self, amp: float, center: np.ndarray, omega:float ):
+    def add_rhythmic_mov( self, amp: float, center: np.ndarray, omega:float, offset:np.ndarray ):
 
         assert amp > 0 and omega > 0 
 
         self.amps.append( amp )
         self.omegas.append( omega )
         self.centers.append( center )
+        self.offsets.append( offset )
         self.n_movs_rhythmic += 1
 
     def input_calc( self, t ):
@@ -334,16 +336,17 @@ class CartesianImpedanceController( ImpedanceController ):
                     self.p0[ j ]  += tmp_p0 
                     self.dp0[ j ] += tmp_dp0
 
+
         if self.n_movs_rhythmic != 0:
             for i in range( self.n_movs_rhythmic ):
-                self.p0[ 0 ] += self.centers[ i ][ 0 ] + self.amps[ i ] * np.sin( self.omegas[ i ] * t )
-                self.p0[ 1 ] += self.centers[ i ][ 1 ] + self.amps[ i ] * np.cos( self.omegas[ i ] * t )
+                self.p0[ 0 ] += self.centers[ i ][ 0 ] + self.amps[ i ] * np.cos( self.omegas[ i ] * t + self.offsets[ i ][ 0 ] )
+                self.p0[ 1 ] += self.centers[ i ][ 1 ] + self.amps[ i ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ 1 ] )
                 self.p0[ 2 ] += 0
 
-                self.dp0[ 0 ] +=   self.amps[ i ] * self.omegas[ i ] * np.cos( self.omegas[ i ] * t )
-                self.dp0[ 1 ] += - self.amps[ i ] * self.omegas[ i ] * np.sin( self.omegas[ i ] * t )
+                self.dp0[ 0 ] += - self.amps[ i ] * self.omegas[ i ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ 0 ] )
+                self.dp0[ 1 ] +=   self.amps[ i ] * self.omegas[ i ] * np.cos( self.omegas[ i ] * t + self.offsets[ i ][ 1 ] )
                 self.dp0[ 2 ] += 0
-
+                
         self.tau  = self.J.T @ ( self.Kp @ ( self.p0 - self.p ) + self.Bp @ (self.dp0 - self.dp ) )
 
         if self.mj_args.is_save_data: self.save_data( )
