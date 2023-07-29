@@ -220,6 +220,7 @@ class JointImpedanceController( ImpedanceController ):
                     self.dq0[ j ]  +=   self.amps[ i ][ j ] * np.cos( self.omegas[ i ] * t + self.offsets[ i ][ j ] ) * self.omegas[ i ]
                     self.ddq0[ j ] += - self.amps[ i ][ j ] * np.sin( self.omegas[ i ] * t + self.offsets[ i ][ j ] ) * self.omegas[ i ] ** 2 
 
+     
         tau_imp   = self.Kq @ ( self.q0 - self.q ) + self.Bq @ ( self.dq0 - self.dq )
         self.tau  = tau_imp
 
