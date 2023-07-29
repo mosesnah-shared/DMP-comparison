@@ -41,12 +41,12 @@ def run_motor_primitives( my_sim ):
     nq = ctrl.nq
 
     # The joint stiffness and damping matrices
-    ctrl.set_impedance( Kq = 50 * np.eye( nq ), Bq = 40 * np.eye( nq ) )
+    ctrl.set_impedance( Kq = 200 * np.eye( nq ), Bq = 100 * np.eye( nq ) )
 
     # The parameters of min-jerk-traj, Initial joint posture, final joint posture, and duration.
     q0i = np.zeros( nq )
     q0f =  np.ones( nq )
-    D   = 2.0
+    D   = 1.0
 
     # Use minimum-jerk trajectory as the reference trajectory 
     ctrl.add_mov_pars( q0i = q0i , q0f = q0f, D = D, ti = args.start_time  )    
@@ -80,7 +80,7 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 20
+    N = 100
 
     # Iterating over the number of joints to each attach DMP
     for i in range( nq ): 
@@ -90,13 +90,13 @@ def run_movement_primitives( my_sim ):
     # The parameters of min-jerk-traj
     q0i = np.zeros( nq )
     q0f =  np.ones( nq )
-    D   = 2.0
+    D   = 1.0
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D        
 
     # The number of sample points for imitation learning
-    P = 100
+    P = 200
 
     # The time step of imitation learning
     # This is simply defined by D/P

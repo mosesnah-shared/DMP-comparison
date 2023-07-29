@@ -43,7 +43,7 @@ python3 -B main_discrete_and_rhythmic.py --run_time 20.0 --record_vid  --save_da
 # Section 3.8: Obstacle Avoidance
 python3 -B main_obstacle_avoidance.py --run_time 10.0 --record_vid  --save_data --sim_type motor
 python3 -B main_obstacle_avoidance.py --run_time 10.0 --record_vid  --save_data --sim_type movement
-exit
+
 
 # Section 3.9: Unexpected Collision
 python3 -B main_unexpected_collision.py --run_time 4.0 --record_vid  --save_data --sim_type motor

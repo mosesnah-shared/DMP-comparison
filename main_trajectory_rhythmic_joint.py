@@ -43,7 +43,7 @@ def run_motor_primitives( my_sim ):
 
     q_init  = np.array( [ 0.5, 0.5 ] )
     qa_init = np.array( [ 0.1, 0.3 ] )
-    omega0  = 2 * np.pi
+    omega0  = 1 * np.pi
     dq_init = omega0 * qa_init 
     
     init_cond = { "qpos": q_init ,  "qvel": dq_init }
@@ -81,7 +81,7 @@ def run_movement_primitives( my_sim ):
         dmp_list.append( dmp )
 
     # For rhythmic movement 
-    omega0 = 2 * np.pi
+    omega0 = 1 * np.pi
 
     # The period of the system
     Tp = 2 * np.pi / omega0 
