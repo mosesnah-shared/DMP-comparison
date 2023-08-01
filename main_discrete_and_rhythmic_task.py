@@ -265,14 +265,16 @@ def run_movement_primitives( my_sim ):
     # Add the controller to the simulation
     my_sim.add_ctrl( dmp_ctrl )
 
-
-
     # Run the simulation
     my_sim.run( )
 
     if args.is_save_data or args.is_record_vid:  
         for i in range( nq ):
             dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
+
+        dmp_g.save_mat_data( my_sim.tmp_dir )
+        scipy.io.savemat( my_sim.tmp_dir + "/dmp_goal_details.mat", { "g0": g0_arr, "g": g_arr } )   
+
 
     my_sim.close( )
 

@@ -203,8 +203,8 @@ def run_movement_primitives( my_sim ):
     my_sim.run( )
 
     if args.is_save_data or args.is_record_vid:  
-        for i in range( nq ):
-            dmp_list[ i ].save_mat_data( my_sim.tmp_dir )
+        dmp_list[ 0 ].save_mat_data( my_sim.tmp_dir )
+        dmp_list[ 1 ].save_mat_data( my_sim.tmp_dir )
 
     my_sim.close( )    
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     # Set the camera position of the simulation
     # Lookat [3] Distance, Elevation, Azimuth
-    args.cam_pos = np.array( [ 2.0, 2.0, 0, 9, -90, 90 ] )    
+    args.cam_pos = np.array( [ -1.0, 2.0, 0, 9, -90, 90 ] )    
 
     if    args.sim_type == "motor"   :    run_motor_primitives( my_sim )
     elif  args.sim_type == "movement": run_movement_primitives( my_sim )
