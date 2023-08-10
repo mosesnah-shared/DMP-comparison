@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import scipy.io
 import numpy    as np
 from mujoco_py import functions
@@ -589,7 +590,7 @@ class DMPJointController2DOF( Controller ):
 
 class DMPTaskController2DOF( Controller ):
 
-    def __init__( self, mj_sim, mj_args, name ):
+    def __init__( self, mj_sim, mj_args, name, is_damped_least = False, is_superimpose = False ):
 
         super( ).__init__( mj_sim, mj_args, name )
 
@@ -598,6 +599,9 @@ class DMPTaskController2DOF( Controller ):
 
         # The name of variables that will be saved 
         self.names_data = ( "t", "tau", "q", "dq", "ddq", "p", "dp", "J", "dJ" , "q_actual", "dq_actual", "ddq_actual" )
+
+        self.is_damped_least = is_damped_least
+        self.is_superimpose  = is_superimpose
 
         # Generate an empty lists names of parameters
         self.init( )
@@ -625,38 +629,51 @@ class DMPTaskController2DOF( Controller ):
         py = self.p_command[ 1, n ]
         
         # Solve the inverse kinematics 
-        q2 = np.pi - np.arccos( 0.5 * ( 2 - px ** 2 - py ** 2  ) )
+        q2 = np.pi - np.arccos( np.clip( 0.5 * ( 2 - px ** 2 - py ** 2  ), -1, 1 ) )
         q1 = np.arctan2( py, px ) - q2/2 
-
+        
         # The end-effector position and velocity
         self.p  = np.copy( self.mj_data.get_site_xpos(  "site_end_effector" ) )
         self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
-
     
         self.t  = t
+        print( t, q1, q2 )
         
         # The joint positions
         self.q   = np.array( [ q1, q2 ] )
         self.q_actual = np.copy( self.mj_data.qpos[ :self.n_act ])
 
+        # Define a new matrix
         # The joint velocities
         self.J   = get2DOF_J( self.q )
-        self.dq  = np.linalg.inv( self.J ) @ self.dp_command[ :2, n ]
+        tmp_jacinv = np.zeros_like( self.J )
+
+        if not self.is_damped_least:
+            tmp_jacinv = np.linalg.inv( self.J )
+            
+        else: # If damped least square 
+            # First, check the singular values of the Jacobian matrix
+            tmp_l = 0.1
+            tmp_jacinv = np.linalg.inv( self.J.T @ self.J + tmp_l**2 * np.eye( self.nq ) ) @ self.J.T 
+            
+        self.dq  = tmp_jacinv @ self.dp_command[ :2, n ]
         self.dq_actual = np.copy( self.mj_data.qvel[ :self.n_act ])
 
         # The joint accelerations
         self.dJ = get2DOF_dJ( self.q, self.dq )
-        self.ddq = np.linalg.inv( self.J ) @ ( self.ddp_command[ :2, n ] - self.dJ @ self.dq )
+        self.ddq = tmp_jacinv @ ( self.ddp_command[ :2, n ] - self.dJ @ self.dq )
         self.ddq_actual = np.copy( self.mj_data.qacc[ :self.n_act ])
 
         # The torque array
         self.tau = get2DOF_M( self.q ) @ self.ddq + get2DOF_C( self.q, self.dq ) @ self.dq
 
+
         # [ADDED] Also superimpose a low PD control
-        self.q_real  = np.copy( self.mj_sim.mj_data.qpos[ : ] )
-        self.dq_real = np.copy( self.mj_sim.mj_data.qvel[ : ] )
-        # Superimpose a low-gain PD control
-        self.tau += 50 * ( self.q - self.q_real ) + 30 * ( self.dq - self.dq_real )
+        if self.is_superimpose:
+            self.q_real  = np.copy( self.mj_sim.mj_data.qpos[ : ] )
+            self.dq_real = np.copy( self.mj_sim.mj_data.qvel[ : ] )
+            # Superimpose a low-gain PD control
+            self.tau += 50 * ( self.q - self.q_real ) + 30 * ( self.dq - self.dq_real )
 
         if self.mj_args.is_save_data: self.save_data( )
 

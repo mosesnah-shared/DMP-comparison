@@ -1090,6 +1090,7 @@ end
 
 
 axis equal
+title( 'Dynamic Movement Primitives', 'fontsize', 30 )
 set( gca, 'xlim', [-1.0, 1.5] , 'ylim', [0, 2.5], 'xtick', [ -1.0, 0.0, 1.0], 'ytick', [ 0.0, 1.0, 2.0], 'fontsize', 25 ) 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
@@ -1142,6 +1143,7 @@ for i = 1 : length( idx_arr )
 end
 
 axis equal
+title( 'Elementary Dynamic Actions', 'fontsize', 30 )
 set( gca, 'xlim', [-1.0, 1.5] , 'ylim', [0, 2.5], 'xtick', [ -1.0, 0.0, 1.0], 'ytick', [ 0.0, 1.0, 2.0], 'fontsize', 25 ) 
 xlabel( '$X$ (m)', 'fontsize', 30 )
 ylabel( '$Y$ (m)', 'fontsize', 30 )
@@ -1677,7 +1679,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'I')    
+    text( -1.5,1.8,'G')    
      
     
     subplot( 2, 4, 3 )
@@ -1712,7 +1714,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'J')    
+    text( -1.5,1.8,'H')    
          
     subplot( 2, 4, 4 )
     
@@ -1748,7 +1750,7 @@ if mode == "MOTOR" || mode == "BOTH"
     
     axis equal    
     set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.0], 'xticklabel', {}, 'yticklabel', {} )
-    text( -1.5,1.8,'K')    
+    text( -1.5,1.8,'I')    
              
     annotation('textarrow', [0.82, 0.795], [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
     annotation('textarrow', [0.82, 0.795]-0.205, [0.795, 0.795], 'Linewidth',2, 'color', [0.3, 0.3, 0.3]) 
@@ -1772,8 +1774,8 @@ if mode == "MOTOR" || mode == "BOTH"
     ylabel( 'Y (m)', 'fontsize', 30 )    
     text( 0.03, 0.65, 'Start', 'fontsize', 20 )
     text( 0.03, 1.82, 'Goal $\mathbf{g}$','fontsize', 20 )
-    text( -0.15,1.8,'L')
-    legend( 'F', 'I,J', 'I,L', 'location', 'southwest' )
+    text( -0.15,1.8,'J')
+    legend( 'F', 'G,H', 'G,I', 'location', 'southwest' )
     sgtitle( 'Elementary Dynamic Actions', 'fontsize', 30)
 
     mySaveFig( gcf, 'unexpected_contact_motor' )

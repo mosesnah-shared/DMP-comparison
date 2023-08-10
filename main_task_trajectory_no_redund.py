@@ -123,7 +123,6 @@ def run_movement_primitives( my_sim ):
         dmp = dmp_list[ i ]
         dmp.imitation_learning( t_arr, p_des[ i, : ], dp_des[ i, : ], ddp_des[ i, : ] )
 
-
     # Now, we integrate this solution
     # The number of time step for the simulation
     N_sim = round( args.run_time/dt ) + 1
@@ -147,7 +146,7 @@ def run_movement_primitives( my_sim ):
         ddp_command[ i, : ] =  dz_arr 
 
     # Define the controller
-    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp" )
+    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_damped_least = True )
     dmp_ctrl.set_traj( p_command, dp_command, ddp_command )
 
     # Add the controller to the simulation
