@@ -40,7 +40,7 @@ def run_motor_primitives( my_sim ):
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
     # Setting the joint-space impedances
-    ctrl.set_impedance( Kq = np.diag( [ 300, 100 ] ), Bq = np.diag( [ 300, 30 ] ) )
+    ctrl.set_impedance( Kq = np.diag( [ 150, 150 ] ), Bq = np.diag( [ 50, 50 ] ) )
     n = my_sim.n_act
 
     # The movement arrays of the postures

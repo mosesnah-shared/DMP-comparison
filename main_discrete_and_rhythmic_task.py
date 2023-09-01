@@ -70,7 +70,7 @@ def run_motor_primitives( my_sim ):
     # Solve the inverse kinematics and reposition
 
     # Setting the joint-space impedances
-    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 90 * np.eye( 3 ), Bp = 60 * np.eye( 3 ) )
     n = my_sim.n_act
 
     # The movement arrays of the postures

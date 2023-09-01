@@ -50,7 +50,7 @@ def run_movement_primitives( my_sim ):
     cs = CanonicalSystem( mov_type = "discrete" )
 
     # The number of basis functions
-    N = 30
+    N = 50
 
     dmp_list = [] 
     tmp_str  = [ "x", "y" ]
@@ -61,7 +61,7 @@ def run_movement_primitives( my_sim ):
     # The parameters of min-jerk-traj
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
     p0f = p0i + np.array( [ 0., 1.2, 0. ] )
-    D1  = 3.0
+    D1  = 1.0
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D1 
@@ -110,7 +110,7 @@ def run_movement_primitives( my_sim ):
         ddp_command[ i, : ] =  dz_arr 
 
     # Define the controller
-    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp" )
+    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_superimpose = False )
     dmp_ctrl.set_traj( p_command, dp_command, ddp_command )
 
     # Add the controller to the simulation
@@ -141,12 +141,12 @@ def run_motor_primitives( my_sim  ):
     is_lambda = True
     
     if is_lambda:
-        ctrl = CartesianImpedanceControllerModulated( my_sim, args, name = "task_imp_modulated", Lmax = 0.5 )
+        ctrl = CartesianImpedanceControllerModulated( my_sim, args, name = "task_imp_modulated", Lmax = 2.5 )
     else:        
         ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
-    ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = 2.0, ti = args.start_time  )    
-    ctrl.set_impedance( Kp = 50 * np.eye( 3 ), Bp = 10 * np.eye( 3 ) )
+    ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = 1.0, ti = args.start_time  )    
+    ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
 
     # Add the controller to the simulation
     my_sim.add_ctrl( ctrl )

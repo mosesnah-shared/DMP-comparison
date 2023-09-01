@@ -65,7 +65,7 @@ def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )    
+    ctrl.set_impedance( Kp = 90 * np.eye( 3 ), Bp = 60 * np.eye( 3 ) )    
 
     # The movement durations of the submovements
     D1, D2 = 1.0, 1.0
@@ -113,7 +113,7 @@ def run_movement_primitives( my_sim  ):
     dmp_list = [] 
 
     # The number of basis functions
-    N = 20
+    N = 50
 
     tmp_str = [ "x", "y" ]
     for i in range( 2 ):

@@ -39,7 +39,7 @@ def run_motor_primitives( my_sim ):
     ctrl = JointImpedanceController( my_sim, args, name = "joint_imp" )
 
     # Setting the joint-space impedances
-    ctrl.set_impedance( Kq = np.diag( [ 300, 100 ] ), Bq = np.diag( [ 100, 30 ] ) )
+    ctrl.set_impedance( Kq = np.diag( [ 150, 150 ] ), Bq = np.diag( [ 50, 50 ] ) )
 
     q_init  = np.array( [ 0.5, 0.5 ] )
     qa_init = np.array( [ 0.1, 0.3 ] )

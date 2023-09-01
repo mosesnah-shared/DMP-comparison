@@ -236,7 +236,7 @@ class Simulation:
 
             # [2022.12.11] 
             # Warning: This is an ad-hoc code which should be improved in the future 
-            if self.t >= 2 and self.t <= 3 and "obstacle" in self.model_name:
+            if self.t >= 1.0 and self.t <= 2.0 and "obstacle" in self.model_name:
                 # Move the obstacle to a new position 
                 self.mj_model.body_pos[ self.mj_model.body_name2id( "body_obstacle") ] -= np.array( [ 0.0005, 0.0, 0.0] )
                 # self.mj_model.body_pos[ self.mj_model.body_name2id( "body_obstacle") ] -= np.array( [ 1, 0.0, 0.0] )
