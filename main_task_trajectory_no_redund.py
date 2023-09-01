@@ -37,12 +37,12 @@ def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl.set_impedance( Kp = 300 * np.eye( 3 ), Bp = 100 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
 
     # The number of actuators
     n = my_sim.n_act
 
-    # Setting the initial conditino of the robots
+    # Setting the initial condition of the robots
     q1 = np.pi * 1/12
     init_cond = { "qpos": np.array( [ q1, np.pi-2*q1 ] ) ,  "qvel": np.zeros( n ) }
     my_sim.init( qpos = init_cond[ "qpos" ], qvel = init_cond[ "qvel" ] )
@@ -50,8 +50,10 @@ def run_motor_primitives( my_sim ):
     # Get the initial end-effector position, and 8 targets in total
     idx = args.target_idx
     pi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
+
+    # pf = pi + np.array( [ 0.0, 1.2, 0.0 ] )    
     pf = pi + np.array( [ 0.0, 2.0 - pi[ 1 ], 0.0 ] )
-    ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 3., ti = args.start_time  )    
+    ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 1., ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
     my_sim.add_ctrl( ctrl )
@@ -79,12 +81,12 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 20
+    N = 60
 
     # The x and y coordinates. 
     tmp_str = [ "x", "y" ]
     for i in range( 2 ):
-        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp" + tmp_str[ i ], cs = cs, n_bfs = N, alpha_z = 10, beta_z = 2.5 )
+        dmp = DynamicMovementPrimitives( mov_type = "discrete", name = "dmp" + tmp_str[ i ], cs = cs, n_bfs = N, alpha_z = 60, beta_z = 15 )
         dmp_list.append( dmp )
         
     # Setting the initial condition of the arm posture 
@@ -95,8 +97,9 @@ def run_movement_primitives( my_sim ):
     # The parameters of min-jerk-traj
     idx = args.target_idx    
     p0i = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector"  ) ) 
-    p0f = p0i + np.array( [ 0.0, 2.0, 0.0 ] )
-    D = 3.0     
+    # p0f = p0i + np.array( [ 0.0, 1.2, 0.0 ] )
+    p0f = p0i + np.array( [ 0.0, 2.0 - p0i[ 1 ], 0.0 ] )
+    D = 1.0     
 
     # The time constant tau is the duration of the movement. 
     cs.tau = D        
@@ -146,7 +149,7 @@ def run_movement_primitives( my_sim ):
         ddp_command[ i, : ] =  dz_arr 
 
     # Define the controller
-    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_damped_least = True )
+    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_damped_least = False )
     dmp_ctrl.set_traj( p_command, dp_command, ddp_command )
 
     # Add the controller to the simulation

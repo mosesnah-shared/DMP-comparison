@@ -145,8 +145,8 @@ def run_motor_primitives( my_sim  ):
     else:        
         ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
 
-    ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = 3.0, ti = args.start_time  )    
-    ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
+    ctrl.add_mov_pars( p0i = p0i, p0f = p0f, D = 2.0, ti = args.start_time  )    
+    ctrl.set_impedance( Kp = 50 * np.eye( 3 ), Bp = 10 * np.eye( 3 ) )
 
     # Add the controller to the simulation
     my_sim.add_ctrl( ctrl )

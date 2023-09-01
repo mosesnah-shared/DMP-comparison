@@ -637,7 +637,6 @@ class DMPTaskController2DOF( Controller ):
         self.dp = np.copy( self.mj_data.get_site_xvelp( "site_end_effector" ) )
     
         self.t  = t
-        print( t, q1, q2 )
         
         # The joint positions
         self.q   = np.array( [ q1, q2 ] )

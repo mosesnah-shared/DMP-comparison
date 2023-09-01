@@ -41,7 +41,7 @@ def run_motor_primitives( my_sim ):
     nq = ctrl.nq
 
     # The joint stiffness and damping matrices
-    ctrl.set_impedance( Kq = 100 * np.eye( nq ), Bq = 50 * np.eye( nq ) )
+    ctrl.set_impedance( Kq = 150 * np.eye( nq ), Bq = 50 * np.eye( nq ) )
 
     # The parameters of min-jerk-traj, Initial joint posture, final joint posture, and duration.
     q0i = np.zeros( nq )
