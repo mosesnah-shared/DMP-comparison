@@ -909,7 +909,7 @@ end
 axis equal
 set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.2], 'xtick', [-1.0, 0.0, 1.0], 'ytick', [0.0, 1.0, 2.0], 'fontsize', fs ) 
 ylabel( '$Y$ (m)', 'fontsize', fs )
-title( 'Dynamic Movement Primitives', 'fontsize', fs )
+% title( 'Dynamic Movement Primitives', 'fontsize', fs )
 
 % Dynamic Motor Primitives
 subplot( 1, 2, 2 )
@@ -940,7 +940,7 @@ set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.2], 'xtick', [-1.0, 0.0, 1.0], 
 xlb = xlabel( '$X$ (m)', 'fontsize', fs );
 xlb.Position( 1 ) = xlb.Position( 1 ) - 1.5;
 xlb.Position( 2 ) = xlb.Position( 2 ) - 0.1;
-title( 'Elementary Dynamic Actions', 'fontsize', fs )
+% title( 'Elementary Dynamic Actions', 'fontsize', fs )
 mySaveFig( gcf,  'task_space_rhythmic_task_space_screenshots' )
 
 
@@ -1018,8 +1018,8 @@ end
 axis equal
 set( gca, 'xlim', [-0.2, 2.0] , 'ylim', [-0.2, 2.0], 'xtick', [ 0.0, 1.0 , 2.0], 'ytick', [0.0, 1.0 , 2.0], 'fontsize', fs ) 
 ylabel( '$Y$ (m)', 'fontsize', fs )
-% t1 = title( 'Dynamic Movement Primitives', 'fontsize', fs );
-% t1.Position( 2 ) = t1.Position( 2 ) + 0.1;
+t1 = title( 'Dynamic Movement Primitives', 'fontsize', fs );
+t1.Position( 2 ) = t1.Position( 2 ) + 0.1;
 
 
 subplot( 1, 2, 2 )
@@ -1047,8 +1047,8 @@ set( gca, 'xlim', [-0.2, 2.0] , 'ylim', [-0.2, 2.0], 'xtick', [ 0.0, 1.0 , 2.0],
 xlb = xlabel( '$X$ (m)', 'fontsize', fs );
 xlb.Position( 1 ) = xlb.Position( 1 ) - 1.5;
 xlb.Position( 2 ) = xlb.Position( 2 ) - 0.1;
-% t2 = title( 'Elementary Dynamic Actions', 'fontsize', fs );
-% t2.Position( 2 ) = t2.Position( 2 ) + 0.1;
+t2 = title( 'Elementary Dynamic Actions', 'fontsize', fs );
+t2.Position( 2 ) = t2.Position( 2 ) + 0.1;
 
 mySaveFig( gcf,  'task_space_rhythmic_joint_space2' )
 
