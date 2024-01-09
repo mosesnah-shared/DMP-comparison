@@ -318,6 +318,9 @@ subplot( 2, 1, 1 )
 % ============================ Movement Primitives ==================================== %
 data_move = load( '../results/discrete_move_task_space_wo_redund/movement/vertical_stretch/ctrl_task_dmp.mat'  );
 
+% With Damped Least Square
+data_move_DLS = load( '../results/discrete_move_task_space_wo_redund/movement/vertical_stretch_damped_least/ctrl_task_dmp.mat' );
+
 % =============================== Motor Primitives ==================================== %
 data_motor = load( '../results/discrete_move_task_space_wo_redund/motor/vertical_stretch/ctrl_task_imp.mat' );
 
@@ -331,6 +334,15 @@ for i = 1 : Ntmp
     det_arr_move( i ) = min( S )/max( S );
 end
 
+Ntmp = length( data_move_DLS.t_arr );
+det_arr_move_DLS = zeros( 1, Ntmp );
+for i = 1 : Ntmp
+%     det_arr_move( i ) = det( data_move.J_arr( :, : , i ) );
+    [~,S,~] = svd( data_move_DLS.J_arr( :, : , i ) );
+    S = diag( S );
+    det_arr_move_DLS( i ) = min( S )/max( S );
+end
+
 Ntmp = length( data_motor.t_arr );
 det_arr_motor = zeros( 1, Ntmp );
 for i = 1 : Ntmp
@@ -342,12 +354,14 @@ end
 
 text( -0.3, 1.0,'E', 'fontsize', 30)
 
-plot( data_move.t_arr,  det_arr_move, 'color', c.blue, 'linewidth', 8  )
+plot( data_move.t_arr,  det_arr_move, 'color', c.blue, 'linewidth', 5  )
+plot( data_move_DLS.t_arr, det_arr_move_DLS, 'color', c.blue, 'linewidth', 8, 'linestyle', ':' )
+axis tight
 plot( data_motor.t_arr, det_arr_motor, 'color', c.orange, 'linewidth', 8 )
 xlabel( '$t$ (sec)', 'fontsize', 30 )
 title( '$\sigma_{min}(\mathbf{J}(\mathbf{q}))/\sigma_{max}(\mathbf{J}(\mathbf{q}))$ (-)', 'fontsize', 0.7*fs )
 set( gca, 'xlim', [0,3], 'xtick', [ 0, 1.0, 2.0, 3.0], 'ylim', [0,0.7], 'ytick', [0.0,0.35, 0.7],'xticklabel', { '0', '1.0', '2.0','3.0' }, 'fontsize', 0.7*fs )
-legend( 'Dynamic Movement Primitives', 'Elementary Dynamic Actions', 'fontsize',0.7* fs, 'location', 'northeast' )
+legend( 'Dynamic Movement Primitives', 'Dynamic Movement Primitives w/ Damped Least Sqaure',  'Elementary Dynamic Actions', 'fontsize',0.7* fs, 'location', 'northeast' )
 
 mySaveFig( gcf, 'goal_directed_discrete_task_space_stretch2' )
 

@@ -37,7 +37,7 @@ def run_motor_primitives( my_sim ):
 
     # Define the controller 
     ctrl = CartesianImpedanceController( my_sim, args, name = "task_imp" )
-    ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 20 * np.eye( 3 ) )
+    ctrl.set_impedance( Kp = 60 * np.eye( 3 ), Bp = 60 * np.eye( 3 ) )
 
     # The number of actuators
     n = my_sim.n_act
@@ -51,8 +51,8 @@ def run_motor_primitives( my_sim ):
     idx = args.target_idx
     pi = np.copy( my_sim.mj_data.get_site_xpos(  "site_end_effector" ) ) 
 
-    # pf = pi + np.array( [ 0.0, 1.2, 0.0 ] )    
-    pf = pi + np.array( [ 0.0, 2.0 - pi[ 1 ], 0.0 ] )
+    pf = pi + np.array( [ 0.0, 1.2, 0.0 ] )    
+    # pf = pi + np.array( [ 0.0, 2.0 - pi[ 1 ], 0.0 ] )
     ctrl.add_mov_pars( p0i = pi, p0f = pf, D = 1., ti = args.start_time  )    
 
     # Add the controller and objective of the simulation
@@ -149,7 +149,7 @@ def run_movement_primitives( my_sim ):
         ddp_command[ i, : ] =  dz_arr 
 
     # Define the controller
-    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_damped_least = False )
+    dmp_ctrl = DMPTaskController2DOF( my_sim, args, name = "task_dmp", is_damped_least = True, is_superimpose = True )
     dmp_ctrl.set_traj( p_command, dp_command, ddp_command )
 
     # Add the controller to the simulation

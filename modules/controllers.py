@@ -754,4 +754,3 @@ class DMPTaskController5DOF( Controller ):
         # (1) index array (3) The tau value
         return  np.arange( self.n_act ), self.tau
 
-# class DMPTaskControllerObstacle( Controller ):
