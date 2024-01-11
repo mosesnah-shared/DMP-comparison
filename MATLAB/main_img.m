@@ -359,7 +359,7 @@ plot( data_move_DLS.t_arr, det_arr_move_DLS, 'color', c.blue, 'linewidth', 8, 'l
 axis tight
 plot( data_motor.t_arr, det_arr_motor, 'color', c.orange, 'linewidth', 8 )
 xlabel( '$t$ (sec)', 'fontsize', 30 )
-title( '$\sigma_{min}(\mathbf{J}(\mathbf{q}))/\sigma_{max}(\mathbf{J}(\mathbf{q}))$ (-)', 'fontsize', 0.7*fs )
+title( '$\sigma_{min}(\mathbf{J}_{p}(\mathbf{q}))/\sigma_{max}(\mathbf{J}_{p}(\mathbf{q}))$ (-)', 'fontsize', 0.7*fs )
 set( gca, 'xlim', [0,3], 'xtick', [ 0, 1.0, 2.0, 3.0], 'ylim', [0,0.7], 'ytick', [0.0,0.35, 0.7],'xticklabel', { '0', '1.0', '2.0','3.0' }, 'fontsize', 0.7*fs )
 legend( 'Dynamic Movement Primitives', 'Dynamic Movement Primitives w/ Damped Least Sqaure',  'Elementary Dynamic Actions', 'fontsize',0.7* fs, 'location', 'northeast' )
 

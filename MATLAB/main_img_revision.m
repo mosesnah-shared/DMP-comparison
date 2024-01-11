@@ -326,3 +326,56 @@ set( gca, 'xlim', [-1.1, 1.1] , 'ylim', [-0.2, 2.4], 'xtick', [-1.0, 0.0, 1.0], 
 
 mySaveFig( gcf, 'revision_discrete_task_space_DLS' )
 
+%% ==================================================================
+%% (--) Goal directed Discrete Movement - Position and Orientation, EDA
+
+% For visualization, we will use Explicit
+file_name = '../results/position_and_orientation/motor/data.mat';
+
+data_move = load( file_name );
+
+% Importing the MuJoCo iiwa14's file
+% Note that there is a model file difference between EXPLICIT
+% Loop through each file
+
+N_stl = 7;
+patches = cell( 1, N_stl );
+
+for i = 1:N_stl
+    % Read the STL file
+    [ vertices, faces ] = stlread( ['../models/iiwa14/meshes/link_', num2str( i ), '.stl' ] );
+    
+    % Plot the STL file
+    patches{ i } = patch('Vertices', vertices.Points, 'Faces', vertices.ConnectivityList, ...
+                         'FaceColor', [0.8 0.8 1.0], 'EdgeColor', [0,0,0], ...
+                         'FaceLighting', 'gouraud', 'AmbientStrength', 0.15);
+
+    
+    % Fix the axes scaling, and set a nice view angle
+    axis('image');
+    view([-135 35]);
+    
+    hold on; % Keep the figure open to plot the next STL file
+    
+    % Get the position for each-link and update 
+    p_tmp = squeeze( data_move.p_links( 1, i, : ) ); 
+    R_tmp = squeeze( data_move.R_links( 1, i, :, : ) );
+    H_tmp = [ R_tmp, p_tmp; 0,0,0,1];
+    
+    hg = hgtransform('Matrix', H_tmp );
+    set( patches{ i }, 'Parent', hg);
+    
+end
+
+% Update transformation 
+
+%%
+% view in front
+view( 90, 0 )
+p0_arr = data_move.p0_arr;
+ q_arr = data_move.q_arr;
+ 
+robot.updateKinematics( q_arr( 1, : ) );
+
+
+plot3( anim.hAxes, p0_arr( :, 1 ), p0_arr( :, 2 ),p0_arr( :, 3 ), 'linewidth', 4 )

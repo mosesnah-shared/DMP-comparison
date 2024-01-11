@@ -1,6 +1,6 @@
 <mujoco model="iiwa14">
 
-	<option timestep='0.001' iterations='50' integrator='Euler' collision='all' gravity="0 0 0"/>
+	<option timestep='0.0001' iterations='50' integrator='Euler' collision='all' gravity="0 0 0"/>
 
 
     <asset>

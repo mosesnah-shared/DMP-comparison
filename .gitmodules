@@ -4,3 +4,6 @@
 [submodule "DMPmodules"]
 	path = DMPmodules
 	url = https://github.com/mosesnah-shared/DMPmodules.git
+[submodule "Explicit-MATLAB"]
+	path = Explicit-MATLAB
+	url = https://github.com/explicit-robotics/Explicit-MATLAB.git
