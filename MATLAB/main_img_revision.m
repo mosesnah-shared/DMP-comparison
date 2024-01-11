@@ -369,13 +369,10 @@ end
 
 % Update transformation 
 
-%%
-% view in front
-view( 90, 0 )
-p0_arr = data_move.p0_arr;
- q_arr = data_move.q_arr;
- 
-robot.updateKinematics( q_arr( 1, : ) );
+%% ==================================================================
+%% (--) Goal directed Discrete Movement - Position and Orientation, DMP
 
 
-plot3( anim.hAxes, p0_arr( :, 1 ), p0_arr( :, 2 ),p0_arr( :, 3 ), 'linewidth', 4 )
+%% ==================================================================
+%% (--) Modular Imitation Learning Images
+
