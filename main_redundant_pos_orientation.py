@@ -67,7 +67,8 @@ def run_motor_primitives( args ):
     mj_viewer.cam.azimuth         = tmp[ 5 ]    
 
     # Setting the initial position and velocity of the robot 
-    qpos = np.array( [-0.5000, 0.8236,0,-1.0472,0.8000, 1.5708, 0 ] )
+    # qpos = np.array( [-0.5000, 0.8236,0,-1.0472,0.8000, 1.5708, 0 ] )
+    qpos = np.zeros( nq )
     qvel = np.zeros( nq )
 
     # If the array is shorter than the actual self.nq in the model, just fill it with zero 
@@ -84,7 +85,6 @@ def run_motor_primitives( args ):
     # The end-effector name
     EE_name = "iiwa14_right_hand"
 
-    
     # Get the initial end-effector position and orientation
     p_init = np.copy( mj_data.get_body_xpos( EE_name ) )
     R_init = np.copy( mj_data.get_body_xmat( EE_name ) )
@@ -107,7 +107,25 @@ def run_motor_primitives( args ):
 
     # Also save the robot's link position and rotation matrices 
     p_links_save, R_links_save = [], [] 
-                
+
+    # [BACKUP]
+    # Printing out the important values
+    for i in range( 7 ):
+        # print( i+1, mj_data.get_site_xpos(  "link" + str( i + 1 ) + "_COM" ) ) 
+        tmpR = np.copy( mj_data.get_site_xmat(  "link" + str( i + 1 ) + "_COM" ) ) 
+        tmpID = mj_model.body_name2id( "iiwa14_link_" + str( i + 1 )  )
+        ttmp = tmpR @ np.diag( mj_model.body_inertia[ tmpID ] ) @ tmpR.T 
+        tttmp = np.array( [ ttmp[ 0, 0 ], ttmp[ 1, 1 ], ttmp[ 2, 2 ], ttmp[ 0, 1 ], ttmp[ 0, 2 ], ttmp[ 1, 2 ] ] ) 
+
+        # print( tttmp )
+        print( i+1, mj_data.get_body_xpos(  "iiwa14_link_" + str( i + 1 )  ) ) 
+
+    MNN_vector = np.zeros(7**2)
+    mjPy.cymj._mj_fullM( mj_model, MNN_vector, mj_data.qM)
+    M = MNN_vector.reshape(( 7, 7 ))        
+    print( M )
+
+    exit( )
 
     # The main loop of the simulation 
     while mj_data.time <= T + 1e-7:

@@ -131,4 +131,7 @@ def get5DOF_dJ( qpos, qvel ):
     dJ[2, 4] = 0
 
     return dJ
+
+# Derived from EXPLICIT
+
         
