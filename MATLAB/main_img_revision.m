@@ -8,10 +8,11 @@
 
 clear; close all; clc; workspace;
 
+cd( fileparts( matlab.desktop.editor.getActiveFilename ) );     
+
 % Add the Libraries of 
 addpath( 'MATLAB_Library/myUtils', 'MATLAB_Library/myGraphics' )
 
-cd( fileparts( matlab.desktop.editor.getActiveFilename ) );     
 myFigureConfig( 'fontsize',  20, ...
                'LineWidth',  10, ...
            'AxesLineWidth', 1.5, ...     For Grid line, axes line width etc.
@@ -374,5 +375,8 @@ end
 
 
 %% ==================================================================
-%% (--) Modular Imitation Learning Images
+%% (--) Modular Imitation Learning Images, Part 1
+
+% Call the drawing M image
+% The full URL
 

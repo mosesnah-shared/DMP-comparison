@@ -15,6 +15,8 @@ import shutil
 import numpy      as np
 import mujoco_py  as mjPy
 import scipy.io
+import matlab.engine
+
 
 from datetime  import datetime
 
@@ -67,8 +69,8 @@ def run_motor_primitives( args ):
     mj_viewer.cam.azimuth         = tmp[ 5 ]    
 
     # Setting the initial position and velocity of the robot 
-    # qpos = np.array( [-0.5000, 0.8236,0,-1.0472,0.8000, 1.5708, 0 ] )
-    qpos = np.zeros( nq )
+    qpos = np.array( [-0.5000, 0.8236,0,-1.0472,0.8000, 1.5708, 0 ] )
+    # qpos = np.zeros( nq )
     qvel = np.zeros( nq )
 
     # If the array is shorter than the actual self.nq in the model, just fill it with zero 
@@ -107,25 +109,6 @@ def run_motor_primitives( args ):
 
     # Also save the robot's link position and rotation matrices 
     p_links_save, R_links_save = [], [] 
-
-    # [BACKUP]
-    # Printing out the important values
-    for i in range( 7 ):
-        # print( i+1, mj_data.get_site_xpos(  "link" + str( i + 1 ) + "_COM" ) ) 
-        tmpR = np.copy( mj_data.get_site_xmat(  "link" + str( i + 1 ) + "_COM" ) ) 
-        tmpID = mj_model.body_name2id( "iiwa14_link_" + str( i + 1 )  )
-        ttmp = tmpR @ np.diag( mj_model.body_inertia[ tmpID ] ) @ tmpR.T 
-        tttmp = np.array( [ ttmp[ 0, 0 ], ttmp[ 1, 1 ], ttmp[ 2, 2 ], ttmp[ 0, 1 ], ttmp[ 0, 2 ], ttmp[ 1, 2 ] ] ) 
-
-        # print( tttmp )
-        print( i+1, mj_data.get_body_xpos(  "iiwa14_link_" + str( i + 1 )  ) ) 
-
-    MNN_vector = np.zeros(7**2)
-    mjPy.cymj._mj_fullM( mj_model, MNN_vector, mj_data.qM)
-    M = MNN_vector.reshape(( 7, 7 ))        
-    print( M )
-
-    exit( )
 
     # The main loop of the simulation 
     while mj_data.time <= T + 1e-7:
@@ -207,8 +190,140 @@ def run_motor_primitives( args ):
     shutil.move( tmp_dir, C.SAVE_DIR  ) if len( os.listdir( tmp_dir ) ) != 0 else os.rmdir( tmp_dir )
             
 
-def run_movement_primitives( my_sim ):
-    NotImplementedError( )
+def run_movement_primitives( args ):
+    
+    # We need to communicate with the MATLAB script for the calculation of the Coriolis matrix
+    # Note that the controller involves:
+    # M(q)ddqr + C(q)dqr ...
+    # Hence, we need a "separate" Coriolis/centrifugal matrix, that is done numerically via MATLAB
+
+    # This act was necessary, as importing the symbolic term of the Coriolis 
+    # was too complex and long, hence impractical.
+    eng = matlab.engine.start_matlab( )
+    eng.addpath( '/Users/mosesnah/Documents/projects/Explicit-MATLAB/examples'         )
+    eng.addpath( '/Users/mosesnah/Documents/projects/Explicit-MATLAB/robots'           )
+    eng.addpath( '/Users/mosesnah/Documents/projects/Explicit-MATLAB/helpers_geometry' )
+    eng.addpath( '/Users/mosesnah/Documents/projects/Explicit-MATLAB/graphics'         )
+    eng.addpath( '/Users/mosesnah/Documents/projects/Explicit-MATLAB/utils'            )
+
+    # The model name
+    model_name =  "iiwa14/iiwa14"
+
+    tmp_dir  = C.TMP_DIR + datetime.now( ).strftime( "%Y%m%d_%H%M%S/" )    
+    os.mkdir( tmp_dir )  
+
+    # Construct the basic mujoco attributes
+    mj_model  = mjPy.load_model_from_path( C.MODEL_DIR + model_name + ".xml" ) 
+    mj_sim    = mjPy.MjSim( mj_model )    
+    mj_data   = mj_sim.data                                              
+    mj_viewer = mjPy.MjViewerBasic( mj_sim ) if not args.is_vid_off else None  
+    
+    args.save_freq = 1000
+
+    # The basic info of the model
+    n_act     = len( mj_model.actuator_names )
+    nq        = len( mj_model.joint_names    )
+    dt        = mj_model.opt.timestep                               
+    T         = args.run_time    
+    fps       = 60   
+    n_steps   = 0
+    vid_step  = round( ( 1. / dt ) / ( fps / args.vid_speed )  )
+    save_step = round( ( 1. / dt ) / args.save_freq  )                        
+
+    # Set the camera viewer
+    tmp = args.cam_pos
+    mj_viewer.cam.lookat[ 0 : 3 ] = tmp[ 0 : 3 ]
+    mj_viewer.cam.distance        = tmp[ 3 ]
+    mj_viewer.cam.elevation       = tmp[ 4 ]
+    mj_viewer.cam.azimuth         = tmp[ 5 ]    
+
+    # Setting the initial position and velocity of the robot 
+    qpos = np.array( [-0.5000, 0.8236,0,-1.0472,0.8000, 1.5708, 0 ] )
+    # qpos = np.zeros( nq )
+    qvel = np.zeros( nq )
+
+    # If the array is shorter than the actual self.nq in the model, just fill it with zero 
+    if n_act != 1:
+        mj_data.qpos[ : ] = qpos[ : nq ] if len( qpos ) >= nq else np.concatenate( ( qpos, np.zeros( nq - len( qpos ) ) ) , axis = None )
+        mj_data.qvel[ : ] = qvel[ : nq ] if len( qvel ) >= nq else np.concatenate( ( qvel, np.zeros( nq - len( qvel ) ) ) , axis = None )
+    else:
+        mj_data.qpos[ 0 ] = qpos
+        mj_data.qvel[ 0 ] = qvel
+
+    # Forward the simulation to update the posture 
+    mj_sim.forward( )
+
+    # The end-effector name
+    EE_name = "iiwa14_right_hand"
+
+    # Get the initial end-effector position and orientation
+    p_init = np.copy( mj_data.get_body_xpos( EE_name ) )
+    R_init = np.copy( mj_data.get_body_xmat( EE_name ) )
+
+    # Joint position and velocity
+    q_curr  = np.copy( mj_data.qpos[ : n_act ] )
+    dq_curr = np.copy( mj_data.qvel[ : n_act ] )
+    
+    # [BACKUP]
+    # m_arr1 = matlab.double( ( np.arange( 7 )+1 ).tolist( ) )
+    # m_arr2 = matlab.double( ( np.arange( 7 )+1 ).tolist( ) )
+    # C_mat  = eng.coriolis_py( m_arr1, m_arr2 )
+
+    # The main loop of the simulation 
+    while mj_data.time <= T + 1e-7:
+
+        # Render the simulation if mj_viewer exists        
+        if mj_viewer is not None and n_steps % vid_step == 0:
+            mj_viewer.render( )
+            print( mj_data.time )
+
+        # Get current end-effector position and velocity 
+        p  = np.copy( mj_data.get_site_xpos(  "site_end_effector" ) )
+        dp = np.copy( mj_data.get_site_xvelp( "site_end_effector" ) )
+
+        # Get the current robot's joint position/velocity trajectories
+        q   = np.copy( mj_data.qpos[ : ] )
+        dq  = np.copy( mj_data.qvel[ : ] )
+        ddq = np.copy( mj_data.qacc[ : ] )
+
+        # The Jacobians
+        Jp = np.copy( mj_data.get_site_jacp(  "site_end_effector" ).reshape( 3, -1 ) )
+        jacp_pinv = np.linalg.pinv( Jp )
+
+        # Get the time-derivative of the Jacobian
+        dJp = NotImplementedError
+
+        # Define the reference p trajectory 
+        dpr  =  dp_command[ :, n_act ] + 80 * np.eye( 3 ) @ (  p_command[ :, n_act ] -  p  )
+        ddpr = ddp_command[ :, n_act ] + 80 * np.eye( 3 ) @ ( dp_command[ :, n_act ] - dp )
+
+        # The dq/ddq reference trajectory 
+        dqr  = jacp_pinv @    dpr 
+        ddqr = jacp_pinv @ ( ddpr - dJp @ dq )
+
+        # The mass/Coriolis matrices
+        nq = mj_sim.nq
+        Mtmp = np.zeros( nq * nq )
+        mjPy.cymj._mj_fullM( mj_model, Mtmp, mj_data.qM )
+        M_mat = np.copy( Mtmp.reshape( nq, -1 ) )
+
+        # The Coriolis
+        m_arr1 = matlab.double(  q.tolist( ) )
+        m_arr2 = matlab.double( dq.tolist( ) )
+    
+        # Call the MATLAB function
+        C_mat = eng.coriolis_py( m_arr1, m_arr2 )        
+
+        tau = M_mat @ ddqr + C_mat @ dqr - 100 * np.eye( nq ) @ ( dq - dqr )
+
+        # Run a single simulation 
+        mj_sim.step( )
+        n_steps += 1
+
+    eng.quit()
+
+
+
 
 if __name__ == "__main__":
                                                                                 
