@@ -1,7 +1,7 @@
 import re
 import sys
 import math
-
+import scipy 
 import numpy as np
 
 from scipy.spatial.transform import Rotation  as R
@@ -68,48 +68,6 @@ def rotz( q ):
     return Rz
 
 
-
-def rot2quat( R: np.ndarray ):
-    # [REF] https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html
-    # [REF] From Johannes
-
-    assert len( R ) == 3 and len( R[ 0 ] ) == 3
-
-    q = np.zeros( 4 )
-
-    R00 = np.trace( R )
-    tmp = np.array( [ R00, R[ 0,0 ], R[ 1,1 ], R[ 2,2 ] ] )
-    k = np.argmax( tmp )
-
-    q[ k ] = 0.5 * np.sqrt( 1 + 2 * tmp[ k ] - R00 )
-
-    if k == 0:
-        q[ 1 ] = 0.25/q[ k ] * ( R[ 2, 1 ] - R[ 1, 2 ] )
-        q[ 2 ] = 0.25/q[ k ] * ( R[ 0, 2 ] - R[ 2, 0 ] )
-        q[ 3 ] = 0.25/q[ k ] * ( R[ 1, 0 ] - R[ 0, 1 ] )
-
-    elif k == 1:
-        q[ 0 ] = 0.25/q[ k ] * ( R[ 2, 1 ] - R[ 1, 2 ] )
-        q[ 2 ] = 0.25/q[ k ] * ( R[ 1, 0 ] + R[ 0, 1 ] )
-        q[ 3 ] = 0.25/q[ k ] * ( R[ 0, 2 ] + R[ 2, 0 ] )
-
-    elif k == 2:
-        q[ 0 ] = 0.25/q[ k ] * ( R[ 0, 2 ] - R[ 2, 0 ] )
-        q[ 2 ] = 0.25/q[ k ] * ( R[ 1, 0 ] + R[ 0, 1 ] )
-        q[ 3 ] = 0.25/q[ k ] * ( R[ 2, 1 ] + R[ 1, 2 ] )
-
-    elif k == 3:
-        q[ 0 ] = 0.25/q[ k ] * ( R[ 1, 0 ] - R[ 0, 1 ] )
-        q[ 1 ] = 0.25/q[ k ] * ( R[ 0, 2 ] + R[ 2, 0 ] )
-        q[ 2 ] = 0.25/q[ k ] * ( R[ 2, 1 ] + R[ 1, 2 ] )
-
-    if q[ 0 ] < 0 : q = -q
-
-    return q
-
-
-
-
 def quat2rot( quat: np.ndarray ):
 
     # [REF] https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html
@@ -152,10 +110,12 @@ def min_jerk_traj( t: float, ti: float,  pi: float, pf: float, D: float ):
 
     assert  t >=  0 and ti >= 0 and D >= 0
 
+    n = len( pi )
+
     if   t <= ti:
         pos = pi
-        vel = 0
-        acc = 0
+        vel = np.zeros( n )
+        acc = np.zeros( n )
 
     elif ti < t <= ti + D:
         tau = ( t - ti ) / D                               
@@ -165,8 +125,8 @@ def min_jerk_traj( t: float, ti: float,  pi: float, pf: float, D: float ):
 
     else:
         pos = pf
-        vel = 0
-        acc = 0
+        vel = np.zeros( n )
+        acc = np.zeros( n )
 
     return pos, vel, acc
 
@@ -328,19 +288,6 @@ def geodesicSO3( rot1, rot2, t0i, D, t):
 
         return rot_interp
 
-def rotx(angle_degrees):
-    """
-    Create a rotation matrix for a rotation about the x-axis.
-
-    :param angle_degrees: Rotation angle in degrees.
-    :return: 3x3 rotation matrix.
-    """
-    angle_radians = np.radians(angle_degrees)
-    c = np.cos(angle_radians)
-    s = np.sin(angle_radians)
-    return np.array([[1, 0, 0],
-                     [0, c, -s],
-                     [0, s, c]])
 
 def SO3_to_R3(rotation_matrix):
     """
@@ -378,3 +325,52 @@ def R3_to_SO3( r3_vector ):
     rotation_matrix = np.eye(3) + np.sin(angle) * skew_symmetric + (1 - np.cos(angle)) * np.dot(skew_symmetric, skew_symmetric)
 
     return rotation_matrix
+
+
+def SO3_to_quat( mat ):
+    """
+    Convert a 3x3 SO3 rotation matrix to a unit quaternion in the order [w, x, y, z].
+
+    Args:
+    so3_matrix (np.ndarray): A 3x3 rotation matrix.
+
+    Returns:
+    np.ndarray: A unit quaternion [w, x, y, z] as a 1x4 numpy array.
+    """
+    if mat.shape != (3, 3):
+        raise ValueError("Input matrix must be a 3x3 matrix.")
+
+    # Initialize the Rotation object from the rotation matrix
+    rotation = R.from_matrix( mat )
+
+    # Convert to quaternion
+    quaternion = rotation.as_quat()  # Returns in the format [x, y, z, w]
+
+    # Reorder and reshape the quaternion to [w, x, y, z] and 1x4 array
+    quaternion_reordered = np.array( [quaternion[3], quaternion[0], quaternion[1], quaternion[2] ] )
+
+    return quaternion_reordered
+
+def quaternion_multiply(q1, q2):
+    """
+    Multiply two quaternions.
+    Each quaternion should be in the format [w, x, y, z].
+
+    Args:
+    q1 (np.ndarray): The first quaternion [w, x, y, z].
+    q2 (np.ndarray): The second quaternion [w, x, y, z].
+
+    Returns:
+    np.ndarray: The result of the quaternion multiplication.
+    """
+    # Extracting individual components for readability
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+
+    # Quaternion multiplication formula
+    w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+    x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+    y = w1*y2 - x1*z2 + y1*w2 + z1*x2
+    z = w1*z2 + x1*y2 - y1*x2 + z1*w2
+
+    return np.array([w, x, y, z])
