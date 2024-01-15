@@ -374,3 +374,20 @@ def quaternion_multiply(q1, q2):
     z = w1*z2 + x1*y2 - y1*x2 + z1*w2
 
     return np.array([w, x, y, z])
+
+def quaternion_conj( q ):
+    """
+    Multiply two quaternions.
+    Each quaternion should be in the format [w, x, y, z].
+
+    Args:
+    q (np.ndarray): The first quaternion [w, x, y, z].
+
+    Returns:
+    np.ndarray: The result of the quaternion multiplication.
+    """
+    # Extracting individual components for readability
+    w, x, y, z = q
+    
+    return np.array( [w, -x, -y, -z ] )
+

@@ -22,7 +22,7 @@ from datetime  import datetime
 
 # The Local Modules
 sys.path.append( os.path.join( os.path.dirname(__file__), "modules" ) )
-from utils       import min_jerk_traj, geodesicSO3, rotx, SO3_to_R3, R3_to_SO3, SO3_to_quat, skew_sym,quaternion_multiply
+from utils       import min_jerk_traj, geodesicSO3, rotx, SO3_to_R3, R3_to_SO3, SO3_to_quat, skew_sym, quaternion_multiply, quaternion_conj
 from constants   import Constants as C
 from constants   import my_parser
 from simulation  import Simulation
@@ -97,7 +97,7 @@ def run_motor_primitives( args ):
     p_goal = p_init - 2 * np.array( [0.0, p_init[ 1 ], 0.0])
     Rdelta = 80
     R_goal = R_init @ rotx( Rdelta*np.pi/180 ) 
-
+    
     # Duration and starting time
     t0i = 0.0
     D   = 3.0
@@ -228,6 +228,7 @@ def run_movement_primitives( args ):
     nq        = len( mj_model.joint_names    )
     dt        = mj_model.opt.timestep                               
     T         = args.run_time    
+    dt        = 0.0001
     fps       = 60   
     n_steps   = 0
     vid_step  = round( ( 1. / dt ) / ( fps / args.vid_speed )  )
@@ -263,14 +264,6 @@ def run_movement_primitives( args ):
     p_init = np.copy( mj_data.get_body_xpos( EE_name ) )
     R_init = np.copy( mj_data.get_body_xmat( EE_name ) )
 
-    # Change rotation to quaternion matrix  
-    quat_init = SO3_to_quat( R_init )
-    
-    # [BACKUP]
-    # m_arr1 = matlab.double( ( np.arange( 7 )+1 ).tolist( ) )
-    # m_arr2 = matlab.double( ( np.arange( 7 )+1 ).tolist( ) )
-    # C_mat  = eng.coriolis_py( m_arr1, m_arr2 )
-
     deltaR = 80
     p_goal = p_init - 2 * np.array( [0.0, p_init[ 1 ], 0.0])
     R_goal = R_init @ rotx( deltaR*np.pi/180 )
@@ -302,78 +295,64 @@ def run_movement_primitives( args ):
             print( mj_data.time )
 
         # Get current end-effector position and velocity 
-        p  = np.copy( mj_data.get_body_xpos(  EE_name ) )
-        dp = np.copy( mj_data.get_body_xvelp( EE_name ) )
-        R  = np.copy( mj_data.get_body_xmat(  EE_name ) )
+        p    = np.copy( mj_data.get_body_xpos(  EE_name ) )
+        dp   = np.copy( mj_data.get_body_xvelp( EE_name ) )
+        w    = np.copy( mj_data.get_body_xvelr( EE_name ) )
+        R    = np.copy( mj_data.get_body_xmat(  EE_name ) )
+        quat = SO3_to_quat( R )
 
         # Get the current robot's joint position/velocity trajectories
         q   = np.copy( mj_data.qpos[ :n_act ] )
         dq  = np.copy( mj_data.qvel[ :n_act ] )
 
-        # The Jacobians
-        Jp = np.copy( mj_data.get_body_jacp( EE_name ).reshape( 3, -1 ) )
-        jacp_pinv = np.linalg.pinv( Jp )
+        # Get the reference trajectory
+        p_des, dp_des, ddp_des = min_jerk_traj( mj_data.time, t0i, p_init, p_goal, D )         
 
-        Jr = np.copy( mj_data.get_body_jacr( EE_name ).reshape( 3, -1 ) )
-        jac_pinv = np.linalg.pinv( np.vstack( ( Jp, Jr ) ) )
+        # Get the p and w difference
+        p_del  =  p_des -  p
+        dp_del = dp_des - dp
+        w_del  = wd - w
 
-        # Get the time-derivative of the Jacobian
-        dJ = getiiwa_dJ( q, dq )
-        dJp = dJ[ :3, : ]
+        # End-effector position and velocity, rotational    
+        R0 = geodesicSO3( R_init, R_goal, t0i, D, mj_data.time )
+        quat_des = SO3_to_quat( R0 )
 
-        # Define the reference p trajectory 
-        p_command, dp_command, ddp_command = min_jerk_traj( mj_data.time, t0i, p_init, p_goal, D )
-    
-        dpr  =  dp_command + 100 * np.eye( 3 ) @ (  p_command -  p )
-        ddpr = ddp_command + 100 * np.eye( 3 ) @ ( dp_command - dp )
+        # Get the quaternion difference epsilon difference
+        quat_diff = quaternion_multiply( quat_des, quaternion_conj( quat )  )
+        eta_del = quat_diff[ 0  ]
+        eps_del = quat_diff[ 1: ]
 
-        # Now, we also need to derive the angular velocity term
-        # Convert current rotation matrix to quaternion
-        quat_curr = SO3_to_quat( R )
-        eta = quat_curr[  0  ]
-        eps = quat_curr[ -3: ]
+        # Gains
+        Kp = 50
+        Ko = 50
 
-        # The higher derivative of the quaternions
-        w_end = np.copy( mj_data.get_body_xvelp( EE_name ) )
-        dquat_curr = 0.5 * quaternion_multiply( np.append( 0, w_end ), quat_curr )
-        deta = dquat_curr[  0  ]
-        deps = dquat_curr[ -3: ]
-
-        if mj_data.time >= t0i and mj_data.time <= t0i + D:
-
-            R_des = R_init @ R3_to_SO3( wd * ( mj_data.time - t0i )  ) 
-
-            quat_des = SO3_to_quat( R_des ) 
-
-            dquat_des = 0.5 * quaternion_multiply( np.append( 0, wd ), quat_des )  
-
-            eta_des  = quat_des[  0  ]
-            eps_des  = quat_des[ -3: ]
-
-            deta_des = dquat_des[  0  ]
-            deps_des = dquat_des[ -3: ]
-
-        else:
-            wd = np.zeros( 3 )
-            eta_des = quat_goal[  0  ]
-            eps_des = quat_goal[ -3: ]
-            
-            deta_des = 0 
-            deps_des = np.zeros( 3 )
-
-        wr  = wd - 20 * np.eye( 3 ) @ (  eta_des *  eps -  eta *  eps_des + skew_sym(  eps_des ) @  eps )
-        dwr =    - 20 * np.eye( 3 ) @ (  eta_des * deps - deta *  eps_des + skew_sym(  eps_des ) @ deps ) \
-                 - 20 * np.eye( 3 ) @ ( deta_des *  eps -  eta * deps_des + skew_sym( deps_des ) @  eps )
-
-        dxr  = np.append(  dpr,  wr )
-        ddxr = np.append( ddpr, dwr )
-
-        # The dq/ddq reference trajectory 
-        # dqr  = jacp_pinv @ dpr 
-        # ddqr = jacp_pinv @ ( ddpr - dJp @ dq )
+        # Define xd
+        xd = np.hstack( ( dp_des + Kp*p_del, wd + Ko*eps_del ) )
         
-        dqr  = jac_pinv @ dxr 
-        ddqr = jac_pinv @ ( ddxr - dJ @ dq )
+        # Get the Jacobian by matrix
+        mat_q = matlab.double( q.tolist( ) )
+        J_mat = eng.Jmat( mat_q )
+
+        # The Jacobian inverse
+        Jp = np.copy( mj_data.get_body_jacp( EE_name ).reshape( 3, -1 ) )
+        Jr = np.copy( mj_data.get_body_jacr( EE_name ).reshape( 3, -1 ) )
+        jac_pinv = np.linalg.pinv( np.vstack( ( Jp, Jr ) ) )        
+
+        # print( J_mat - np.vstack( ( Jp, Jr ) ) )
+
+        vd = jac_pinv @ xd
+
+        tmp1 = ddp_des + Kp*dp_del
+        tmp2 = Ko * ( 0.5 * ( eta_del * np.eye( 3 ) + skew_sym( eps_del ) ) @ w_del - skew_sym( eps_del ) @ wd ) 
+        dxd  = np.hstack( [ tmp1, tmp2 ] )
+
+        # Numerically get the difference
+        J_mat1 = eng.Jmat( mat_q )
+        mat_q2 = matlab.double( ( q + dq * dt ).tolist( ) ) 
+        J_mat2 = eng.Jmat( mat_q2 )
+        dJ = ( np.linalg.pinv( J_mat2 ) - np.linalg.pinv( J_mat1 ))/dt
+
+        dvd = dJ @ xd + jac_pinv @ dxd
 
         # The mass/Coriolis matrices
         nq = mj_model.nq
@@ -381,14 +360,7 @@ def run_movement_primitives( args ):
         mjPy.cymj._mj_fullM( mj_model, Mtmp, mj_data.qM )
         M_mat = np.copy( Mtmp.reshape( nq, -1 ) )
 
-        # The Coriolis
-        m_arr1 = matlab.double(  q.tolist( ) )
-        m_arr2 = matlab.double( dq.tolist( ) )
-    
-        # Call the MATLAB function
-        C_mat = eng.coriolis_py( m_arr1, m_arr2 )        
-
-        tau = M_mat @ ddqr + C_mat @ dqr - 30 * np.eye( nq ) @ ( dq - dqr )
+        tau = M_mat @ ( dvd + 50 * ( vd - dq ) ) + mj_data.qfrc_bias
         mj_data.ctrl[ :n_act ] = tau
 
         # Run a single simulation 
@@ -400,10 +372,10 @@ def run_movement_primitives( args ):
             t_arr_save.append( mj_data.time )
             q_arr_save.append( q ) 
             p_save.append( p )
-            p0_save.append( p_command )
+            p0_save.append( p_des )
             
             R_save.append( R )
-            R0_save.append( R_des )
+            R0_save.append( R0 )
 
             # Also save the robot's link position and rotation matrices 
             p_tmp = []

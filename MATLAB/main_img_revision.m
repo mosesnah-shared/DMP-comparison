@@ -142,6 +142,196 @@ xlabel( '$t$ (sec)', 'fontsize', 40 )
 
 mySaveFig( gcf, 'revision_discrete_joint_space_sensitivity' )
 
+%% (--) Goal directed Discrete Movement - Joint Space, Sensitivity Analysis, Different Style, Stiffness
+clear data*; clc; close all
+
+% For Different Stiffness Values
+% The results are saved under the following directory 
+dir_name = '../results/discrete_joint_tracking_error/for_stiffness/';
+
+% Save the data as raw data
+% The array of stiffness values used for the comparison
+Kq = [ 30, 150, 1200 ];
+Nk = length( Kq );
+rawDataK = cell( 1, Nk );
+
+for i = 1 : Nk
+    rawDataK{ i } = load( [ dir_name, 'Kq', num2str( Kq(i) ), 'Bq50/ctrl_joint_imp.mat' ] );
+end
+
+% Adding the Subplots
+
+% ======================================================================== %
+% Plot1: EDA, joint 1, Changing Stiffness
+subplot( 2, 3, 1 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+
+lw2 = 5;
+
+t_arr = rawDataK{ 1 }.t_arr;
+q_arr = rawDataK{ 1 }.q_arr( 1, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange );
+plot( t_arr, rawDataK{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+ylabel( '$q_1(t)$ (rad)', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+title( '$\mathbf{K}_q=30\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 2 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+lw_s = { ':', '-', '-.' };  
+lw2 = 5;
+t_arr = rawDataK{ 2 }.t_arr;
+q_arr = rawDataK{ 2 }.q_arr( 1, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange, 'linestyle', '-');
+plot( t_arr, rawDataK{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+title( '$\mathbf{K}_q=150\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+% ======================================================================== %
+% Plot2: EDA, joint 2, Changing Stiffness
+subplot( 2, 3, 3 )
+hold on
+
+t_arr = rawDataK{ 3 }.t_arr;
+q_arr = rawDataK{ 3 }.q_arr( 1, : );
+
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-' );
+plot( t_arr, rawDataK{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+title( '$\mathbf{K}_q=1200\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 4 )
+hold on
+
+t_arr = rawDataK{ 1 }.t_arr;
+q_arr = rawDataK{ 1 }.q_arr( 2, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-');
+plot( t_arr, rawDataK{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+ylabel( '$q_2(t)$ (rad)', 'fontsize', fs  )
+
+
+subplot( 2, 3, 5 )
+hold on
+
+t_arr = rawDataK{ 2 }.t_arr;
+q_arr = rawDataK{ 2 }.q_arr( 2, : );   
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataK{ 2 }.q0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+xlabel( '$t$ (sec)', 'fontsize', 40 )
+
+subplot( 2, 3, 6 )
+hold on
+
+t_arr = rawDataK{ 3 }.t_arr;
+q_arr = rawDataK{ 3 }.q_arr( 2, : );
+    
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', lw_s{i}  );
+plot( t_arr, rawDataK{ 3 }.q0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+
+mySaveFig( gcf, 'revision_discrete_joint_space_sensitivity_2by3_K' )
+
+%% (--) Goal directed Discrete Movement - Joint Space, Sensitivity Analysis, Different Style, Damping
+clear data*; clc; close all
+
+% For Different Damping Values
+dir_name = '../results/discrete_joint_tracking_error/for_damping/';
+
+% Save the data as raw data
+% The array of stiffness values used for the comparison
+Bq = [ 10, 50, 150 ];
+Nb = length( Bq );
+rawDataB = cell( 1, Nb );
+
+for i = 1 : Nb
+    rawDataB{ i } = load( [ dir_name, 'Kq150Bq', num2str( Bq(i) ), '/ctrl_joint_imp.mat' ] );
+end
+
+% Adding the Subplots
+
+% ======================================================================== %
+% Plot1: EDA, joint 1, Changing Stiffness
+subplot( 2, 3, 1 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+
+lw2 = 5;
+
+t_arr = rawDataB{ 1 }.t_arr;
+q_arr = rawDataB{ 1 }.q_arr( 1, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange );
+plot( t_arr, rawDataB{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+ylabel( '$q_1(t)$ (rad)', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+title( '$\mathbf{B}_q=10\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 2 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+lw_s = { ':', '-', '-.' };  
+lw2 = 5;
+t_arr = rawDataB{ 2 }.t_arr;
+q_arr = rawDataB{ 2 }.q_arr( 1, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange, 'linestyle', '-');
+plot( t_arr, rawDataB{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+title( '$\mathbf{B}_q=50\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+% ======================================================================== %
+% Plot2: EDA, joint 2, Changing Stiffness
+subplot( 2, 3, 3 )
+hold on
+
+t_arr = rawDataB{ 3 }.t_arr;
+q_arr = rawDataB{ 3 }.q_arr( 1, : );
+
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-' );
+plot( t_arr, rawDataB{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+title( '$\mathbf{B}_q=150\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 4 )
+hold on
+
+t_arr = rawDataB{ 1 }.t_arr;
+q_arr = rawDataB{ 1 }.q_arr( 2, : );
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-');
+plot( t_arr, rawDataB{ 1 }.q0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+ylabel( '$q_2(t)$ (rad)', 'fontsize', fs  )
+
+
+subplot( 2, 3, 5 )
+hold on
+
+t_arr = rawDataB{ 2 }.t_arr;
+q_arr = rawDataB{ 2 }.q_arr( 2, : );   
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataB{ 2 }.q0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+xlabel( '$t$ (sec)', 'fontsize', 40 )
+
+subplot( 2, 3, 6 )
+hold on
+
+t_arr = rawDataB{ 3 }.t_arr;
+q_arr = rawDataB{ 3 }.q_arr( 2, : );
+    
+plot( t_arr, q_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', lw_s{i}  );
+plot( t_arr, rawDataB{ 3 }.q0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0, 1.5], 'fontsize', fs  )
+
+mySaveFig( gcf, 'revision_discrete_joint_space_sensitivity_2by3_B' )
 
 %% ==================================================================
 %% (--) Goal directed Discrete Movement - Task Space, Sensitivity Analysis
@@ -271,6 +461,196 @@ set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
 
 mySaveFig( gcf, 'revision_discrete_task_space_sensitivity' )
 
+
+%% (--) Goal directed Discrete Movement - Task Space, Sensitivity Analysis, Different Style, Stiffness
+clear data*; clc; close all
+
+% For Different Stiffness Values
+% The results are saved under the following directory 
+dir_name = '../results/discrete_task_tracking_error/for_stiffness/';
+
+Kp = [ 20, 60, 300 ];
+Nk = length( Kp );
+rawDataK = cell( 1, Nk );
+
+for i = 1 : Nk
+    rawDataK{ i } = load( [ dir_name, 'Kp', num2str( Kp(i) ), 'Bp20/ctrl_task_imp.mat' ] );
+end
+
+% Adding the Subplots
+
+% ======================================================================== %
+% Plot1: EDA, joint 1, Changing Stiffness
+subplot( 2, 3, 1 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+
+lw2 = 5;
+
+t_arr = rawDataK{ 1 }.t_arr;
+x_arr = rawDataK{ 1 }.p_arr( 1, : );
+plot( t_arr, x_arr, 'linewidth', lw2,  'color', c.orange );
+plot( t_arr, rawDataK{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+ylabel( '$X$ (m)', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+title( '$\mathbf{K}_p=20\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 2 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+lw_s = { ':', '-', '-.' };  
+lw2 = 5;
+t_arr = rawDataK{ 2 }.t_arr;
+p_arr = rawDataK{ 2 }.p_arr( 1, : );
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange, 'linestyle', '-');
+plot( t_arr, rawDataK{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+title( '$\mathbf{K}_p=60\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+% ======================================================================== %
+% Plot2: EDA, joint 2, Changing Stiffness
+subplot( 2, 3, 3 )
+hold on
+
+t_arr = rawDataK{ 3 }.t_arr;
+p_arr = rawDataK{ 3 }.p_arr( 1, : );
+
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-' );
+plot( t_arr, rawDataK{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+title( '$\mathbf{K}_p=300\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 4 )
+hold on
+
+t_arr = rawDataK{ 1 }.t_arr;
+p_arr = rawDataK{ 1 }.p_arr( 2, : );
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-');
+plot( t_arr, rawDataK{ 1 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+ylabel( '$Y$ (m)', 'fontsize', fs  )
+
+
+subplot( 2, 3, 5 )
+hold on
+
+t_arr = rawDataK{ 2 }.t_arr;
+p_arr = rawDataK{ 2 }.p_arr( 2, : );   
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataK{ 2 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+xlabel( '$t$ (sec)', 'fontsize', 40 )
+
+subplot( 2, 3, 6 )
+hold on
+
+t_arr = rawDataK{ 3 }.t_arr;
+p_arr = rawDataK{ 3 }.p_arr( 2, : );
+    
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataK{ 3 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+
+mySaveFig( gcf, 'revision_discrete_task_space_sensitivity_2by3_K' )
+
+%% (--) Goal directed Discrete Movement - Task Space, Sensitivity Analysis, Different Style, Damping
+clear data*; clc; close all
+
+% For Different Damping Values
+dir_name = '../results/discrete_task_tracking_error/for_damping/';
+
+% Save the data as raw data
+% The array of stiffness values used for the comparison
+Bp = [ 10, 20, 60 ];
+Nb = length( Bq );
+rawDataB = cell( 1, Nb );
+
+for i = 1 : Nb
+    rawDataB{ i } = load( [ dir_name, 'Kp60Bp', num2str( Bp(i) ), '/ctrl_task_imp.mat' ] );
+end
+fs = 40;
+% Adding the Subplots
+
+% ======================================================================== %
+% Plot1: EDA, joint 1, Changing Stiffness
+subplot( 2, 3, 1 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+
+lw2 = 5;
+
+t_arr = rawDataB{ 1 }.t_arr;
+x_arr = rawDataB{ 1 }.p_arr( 1, : );
+plot( t_arr, x_arr, 'linewidth', lw2,  'color', c.orange );
+plot( t_arr, rawDataB{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+ylabel( '$X$ (m)', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+title( '$\mathbf{B}_p=10\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 2 )
+hold on
+% Kq = [ 30, 150, 1200 ];
+lw_s = { ':', '-', '-.' };  
+lw2 = 5;
+t_arr = rawDataB{ 2 }.t_arr;
+p_arr = rawDataB{ 2 }.p_arr( 1, : );
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange, 'linestyle', '-');
+plot( t_arr, rawDataB{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+title( '$\mathbf{B}_p=20\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+% ======================================================================== %
+% Plot2: EDA, joint 2, Changing Stiffness
+subplot( 2, 3, 3 )
+hold on
+
+t_arr = rawDataB{ 3 }.t_arr;
+p_arr = rawDataB{ 3 }.p_arr( 1, : );
+
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-' );
+plot( t_arr, rawDataB{ 1 }.p0_arr( 1, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [-0.4, 0.4001], 'fontsize', fs  )
+title( '$\mathbf{B}_p=60\mathbf{I}_2$', 'fontsize', fs  )
+set( gca, 'xticklabel', {} )
+
+subplot( 2, 3, 4 )
+hold on
+
+t_arr = rawDataB{ 1 }.t_arr;
+p_arr = rawDataB{ 1 }.p_arr( 2, : );
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-');
+plot( t_arr, rawDataB{ 1 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+ylabel( '$Y$ (m)', 'fontsize', fs  )
+
+
+subplot( 2, 3, 5 )
+hold on
+
+t_arr = rawDataB{ 2 }.t_arr;
+p_arr = rawDataB{ 2 }.p_arr( 2, : );   
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataB{ 2 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+xlabel( '$t$ (sec)', 'fontsize', 40 )
+
+subplot( 2, 3, 6 )
+hold on
+
+t_arr = rawDataB{ 3 }.t_arr;
+p_arr = rawDataB{ 3 }.p_arr( 2, : );
+    
+plot( t_arr, p_arr, 'linewidth', lw2,  'color', c.orange,'linestyle', '-'  );
+plot( t_arr, rawDataB{ 3 }.p0_arr( 2, : ), 'linewidth', 6, 'color', 'k', 'linestyle', ':' );
+set( gca, 'xlim', [ 0, 1.5 ], 'ylim', [0.5, 2], 'fontsize', fs  )
+
+mySaveFig( gcf, 'revision_discrete_task_space_sensitivity_2by3_B' )
+
 %% ==================================================================
 %% (--) Goal directed Discrete Movement - Task Space, Damped Least Square
 clear data*; clc; close all
@@ -364,10 +744,10 @@ for j = 1 : length( time_arr )
         % Plot the STL file
         if  i == 7
             patches{ j, i } = patch('Vertices', vertices.Points, 'Faces', vertices.ConnectivityList, ...
-                                 'FaceColor', [0.8500 0.3250 0.0980], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8 );
+                                 'FaceColor', [0.8500 0.3250 0.0980], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8, 'EdgeAlpha', 0.2 );
         else
             patches{ j, i } = patch('Vertices', vertices.Points, 'Faces', vertices.ConnectivityList, ...
-                                 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8 );
+                                 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8, 'EdgeAlpha', 0.2 );
         end
 
         % Get the position for each-link and update 
@@ -399,8 +779,11 @@ for j = 1 : length( time_arr )
     quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 8, 'color', 'g' )
     quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 8, 'color', 'b' )
     
-    
 end
+
+lighting gouraud
+light('Position',[1 0 0],'Style','infinite');
+
 
 plot3( a, data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 5, 'color', 'k', 'linestyle', '--' )
 plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', '-', 'color', [0.8500 0.3250 0.0980] )
@@ -446,8 +829,8 @@ mySaveFig( gcf, 'revision_EDA1_img2' )
 close all;
 f = figure( ); a = axes( 'parent', f );
 hold on
-plot3( a, data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 5, 'color', 'k', 'linestyle', '--' )
-plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', '-', 'color', [0.8500 0.3250 0.0980] )
+plot3( a, data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', ':' )
+plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 5, 'linestyle', '-', 'color', [0.8500 0.3250 0.0980] )
 axis equal
 
 set( a, 'visible', 'off' )
@@ -455,7 +838,9 @@ view( [90, 0 ])
 
 Np = length( data_move.t_arr );
 
-time_arr = [ 1, 1000, 1400, 1800, 2200, Np ];
+time_arr = [ 1, 1000, 1400, 1800, 2200 ];
+
+Rgoal = squeeze( data_move.R_arr( 1, :, : ) ) * rotx( 80 * pi/180 );
 
 for i = 1: length( time_arr )
     
@@ -490,9 +875,30 @@ for i = 1: length( time_arr )
     quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
     quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
         
-    
 end
-set( a, 'xlim', [0.3251, 1.6981], 'ylim', [-0.2401, 0.29], 'zlim', [0.1633, 0.3969] )
+
+Rgoal = squeeze( data_move.R0_arr( end, :, : ) );
+r1 = scl * Rgoal( :, 1 );
+r2 = scl * Rgoal( :, 2 );
+r3 = scl * Rgoal( :, 3 );
+
+p0_end = data_move.p0_arr( end, : );
+x =0.1+ p0_end( 1 );
+y = p0_end( 2 );
+z = p0_end( 3 );
+scatter3( a, x, y, z, 500, 'filled', 'markerfacecolor', 'w', 'markeredgecolor', [0.8500 0.3250 0.0980], 'linewidth', 5 )
+
+quiver3( a, x, y, z, r1( 1 ), r1( 2 ), r1( 3 ), 'linewidth', 8, 'color', 'r' )
+quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 8, 'color', 'g' )
+quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 8, 'color', 'b' )
+
+quiver3( a, x, y, z, r1( 1 ), r1( 2 ), r1( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+
+
+
+set( a, 'xlim', [0.3251, 1.6981], 'ylim', [-0.2401, 0.2680], 'zlim', [0.1633, 0.3969] )
 mySaveFig( gcf, 'revision_EDA1_img3' )
 
 
@@ -530,10 +936,10 @@ for j = 1 : length( time_arr )
         % Plot the STL file
         if  i == 7
             patches{ j, i } = patch('Vertices', vertices.Points, 'Faces', vertices.ConnectivityList, ...
-                                 'FaceColor', [0.3010 0.7450 0.9330]	, 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.5 );
+                                 'FaceColor', [0.3010 0.7450 0.9330]	, 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.5, 'EdgeAlpha', 0.2 );
         else
             patches{ j, i } = patch('Vertices', vertices.Points, 'Faces', vertices.ConnectivityList, ...
-                                 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8 );
+                                 'FaceColor', [0.8, 0.8, 0.8], 'EdgeColor', [0.0,0.0,0.0], 'FaceAlpha', 0.8, 'EdgeAlpha', 0.2 );
         end
 
         % Get the position for each-link and update 
@@ -570,6 +976,9 @@ end
 
 plot3( a, data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 5, 'color', 'k', 'linestyle', '--' )
 plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', '-', 'color', [0 0.4470 0.7410]	 )
+
+lighting gouraud
+light('Position',[1 0 0],'Style','infinite');
 
 % Update transformation 
 view( [ 90, 0 ] )
@@ -610,8 +1019,8 @@ mySaveFig( gcf, 'revision_DMP_img2' )
 close all;
 f = figure( ); a = axes( 'parent', f );
 hold on
-plot3( a, 0.1+data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 5, 'color', 'k', 'linestyle', '--' )
-plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', '-', 'color', [0 0.4470 0.7410]	 )
+plot3( a, 0.1+data_move.p0_arr( :, 1 ), data_move.p0_arr( :, 2 ), data_move.p0_arr( :, 3 ), 'linewidth', 10, 'color', 'k', 'linestyle', ':' )
+plot3( a, data_move.p_arr(  :, 1 ), data_move.p_arr(  :, 2 ), data_move.p_arr(  :, 3 ), 'linewidth', 5,'linestyle', '-', 'color', [0 0.4470 0.7410]	 )
 axis equal
 
 set( a, 'visible', 'off' )
@@ -619,7 +1028,7 @@ view( [90, 0 ])
 
 Np = length( data_move.t_arr );
 
-time_arr = [ 1, 1000, 1400, 1700, 2100, 2800 ];
+time_arr = [ 1, 1000, 1400, 1700, 2100 ];
 
 for i = 1: length( time_arr )
     
@@ -656,6 +1065,29 @@ for i = 1: length( time_arr )
         
     
 end
+
+
+Rgoal = squeeze( data_move.R0_arr( end, :, : ) );
+r1 = scl * Rgoal( :, 1 );
+r2 = scl * Rgoal( :, 2 );
+r3 = scl * Rgoal( :, 3 );
+
+p0_end = data_move.p0_arr( end, : );
+x =0.1+ p0_end( 1 );
+y = p0_end( 2 );
+z = p0_end( 3 );
+scatter3( a, x, y, z, 500, 'filled', 'markerfacecolor', 'w', 'markeredgecolor', [0.8500 0.3250 0.0980], 'linewidth', 5 )
+
+quiver3( a, x, y, z, r1( 1 ), r1( 2 ), r1( 3 ), 'linewidth', 8, 'color', 'r' )
+quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 8, 'color', 'g' )
+quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 8, 'color', 'b' )
+
+quiver3( a, x, y, z, r1( 1 ), r1( 2 ), r1( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+quiver3( a, x, y, z, r2( 1 ), r2( 2 ), r2( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+quiver3( a, x, y, z, r3( 1 ), r3( 2 ), r3( 3 ), 'linewidth', 4, 'color', [ 0.1,0.1,0.1] )
+
+
+
 
 set( a, 'xlim', [0.3251, 1.0981], 'ylim', [-0.2401, 0.2680], 'zlim', [0.1633, 0.3969] )
 
