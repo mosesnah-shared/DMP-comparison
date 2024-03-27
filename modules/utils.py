@@ -110,7 +110,7 @@ def min_jerk_traj( t: float, ti: float,  pi: float, pf: float, D: float ):
 
     assert  t >=  0 and ti >= 0 and D >= 0
 
-    n = len( pi )
+    n = len( pi ) if not np.isscalar( pi ) else 1
 
     if   t <= ti:
         pos = pi

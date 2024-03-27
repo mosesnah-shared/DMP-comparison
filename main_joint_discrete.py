@@ -80,7 +80,7 @@ def run_movement_primitives( my_sim ):
     dmp_list = [] 
 
     # The number of basis functions for the imitation learning
-    N = 100
+    N = 50
 
     # Iterating over the number of joints to each attach DMP
     for i in range( nq ): 
@@ -96,27 +96,30 @@ def run_movement_primitives( my_sim ):
     cs.tau = D        
 
     # The number of sample points for imitation learning
-    P = 200
+    P = 100
 
     # The time step of imitation learning
     # This is simply defined by D/P
     # Adding tmp for the dt
-    tmp_dt = D/P
+    td = np.linspace( 0, D, P )
 
     # The P samples points of q_des, dq_des, ddq_des
-    q_des   = np.zeros( ( nq, P + 1 ) )
-    dq_des  = np.zeros( ( nq, P + 1 ) ) 
-    ddq_des = np.zeros( ( nq, P + 1 ) )
+    q_des   = np.zeros( ( nq, P ) )
+    dq_des  = np.zeros( ( nq, P ) ) 
+    ddq_des = np.zeros( ( nq, P ) )
 
     for i in range( nq ):
-        for j in range( P + 1 ):
-            t = tmp_dt * j
+        for j in range( P ):
+            t = td[ j ]
             q_des[ i, j ], dq_des[ i, j ], ddq_des[ i, j ] = min_jerk_traj( t, 0.0, q0i[ i ], q0f[ i ], D  )
 
         # Once the trajectory is defined, conduct imitation learning.
-        t_arr = tmp_dt * np.arange( P + 1 )
         dmp = dmp_list[ i ]
-        dmp.imitation_learning( t_arr, q_des[ i, : ], dq_des[ i, : ], ddq_des[ i, : ] )
+        dmp.imitation_learning( td, q_des[ i, : ], dq_des[ i, : ], ddq_des[ i, : ] )
+
+        print( np.array( dmp.weights ) )
+    
+    exit( )
 
     # Now, we integrate the simulation via the learned weights
     # For this, the initial and final time of the simulation is important.
